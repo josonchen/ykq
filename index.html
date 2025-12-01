@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#4A90E2" />
+  <title>🏠 家用物品管家</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
+      line-height: 1.6;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 16px 12px;
+      background-color: #4A90E2;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .container {
+      padding: 16px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 14px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #4A90E2;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background-color: #6c757d;
+    }
+
+    button.scan-btn {
+      background-color: #28a745;
+    }
+
+    button.delete-btn {
+      background-color: #ff6b6b;
+    }
+
+    .item {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .item img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin-top: 10px;
+      display: block;
+    }
+
+    #scannerContainer {
+      position: relative;
+      width: 100%;
+      height: 300px;
+      background: #000;
+      border-radius: 12px;
+      margin: 16px 0;
+      overflow: hidden;
+      display: none;
+    }
+
+    #barcodeScanner {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .scan-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border: 2px solid #28a745;
+      box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      color: #888;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏠 家用物品管家</h1>
+  </header>
+
+  <div class="container">
+    <input type="text" id="searchInput" placeholder="🔍 搜索物品名称..." />
+    <select id="categoryFilter">
+      <option value="">📂 全部分类</option>
+    </select>
+
+    <div style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+      <button id="exportBtn" class="secondary">📤 导出到 iCloud</button>
+      <button id="importBtn" class="secondary">📥 从 iCloud 导入</button>
+      <button id="scanBtn" class="scan-btn" style="display:none;">📷 扫描条码</button>
+    </div>
+
+    <div id="scannerContainer">
+      <video id="barcodeScanner" autoplay playsinline></video>
+      <div class="scan-overlay"></div>
+    </div>
+
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
+
+    <input type="text" id="itemName" placeholder="物品名称（例如：电饭煲）" />
+    <input type="text" id="itemCategory" placeholder="分类（例如：厨房）" />
+    <input type="file" id="itemImage" accept="image/*" capture="environment" />
+    <button id="addItem">➕ 添加物品</button>
+
+    <input type="file" id="importFile" accept=".json" style="display:none;" />
+
+    <div id="itemsList"></div>
+  </div>
+
+  <footer>
+    数据可导出到 iCloud Drive · 扫码需在线使用（如 GitHub Pages）
+  </footer>
+
+  <script src="https://unpkg.com/@zxing/library@0.18.6/umd/zxing-browser.min.js"></script>
+  <script>
+    let allItems = JSON.parse(localStorage.getItem('homeItems') || '[]');
+
+    const itemsList = document.getElementById('itemsList');
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const itemNameInput = document.getElementById('itemName');
+    const itemCategoryInput = document.getElementById('itemCategory');
+    const itemImageInput = document.getElementById('itemImage');
+    const addItemBtn = document.getElementById('addItem');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importFile = document.getElementById('importFile');
+    const scanBtn = document.getElementById('scanBtn');
+    const scannerContainer = document.getElementById('scannerContainer');
+    const video = document.getElementById('barcodeScanner');
+
+    function saveAndRender() {
+      localStorage.setItem('homeItems', JSON.stringify(allItems));
+      renderCategoryFilter();
+      renderItems();
+    }
+
+    function getUniqueCategories() {
+      const cats = new Set(allItems.map(item => item.category).filter(Boolean));
+      return Array.from(cats).sort();
+    }
+
+    function renderCategoryFilter() {
+      const categories = getUniqueCategories();
+      categoryFilter.innerHTML = '<option value="">📂 全部分类</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        categoryFilter.appendChild(opt);
+      });
+    }
+
+    function renderItems() {
+      const searchTerm = searchInput.value.trim().toLowerCase();
+      const filterCat = categoryFilter.value;
+
+      const filtered = allItems.filter(item => {
+        const matchName = !searchTerm || item.name.toLowerCase().includes(searchTerm);
+        const matchCat = !filterCat || item.category === filterCat;
+        return matchName && matchCat;
+      });
+
+      itemsList.innerHTML = '';
+      if (filtered.length === 0) {
+        itemsList.innerHTML = '<p style="text-align:center;color:#888;">暂无物品</p>';
+        return;
+      }
+
+      filtered.forEach((item, _) => {
+        const originalIndex = allItems.findIndex(i => i === item);
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <strong>${item.name}</strong>
+          ${item.category ? `<br><small>📂 ${item.category}</small>` : ''}
+          ${item.image ? `<img src="${item.image}" alt="${item.name}">` : ''}
+          <button class="delete-btn" data-index="${originalIndex}">🗑️ 删除</button>
+        `;
+        itemsList.appendChild(div);
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.dataset.index);
+          allItems.splice(idx, 1);
+          saveAndRender();
+        });
+      });
+    }
+
+    addItemBtn.addEventListener('click', () => {
+      const name = itemNameInput.value.trim();
+      const category = itemCategoryInput.value.trim();
+      if (!name) {
+        alert('请输入物品名称');
+        return;
+      }
+
+      if (itemImageInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          allItems.push({ name, category, image: e.target.result });
+          saveAndRender();
+          resetForm();
+        };
+        reader.readAsDataURL(itemImageInput.files[0]);
+      } else {
+        allItems.push({ name, category, image: '' });
+        saveAndRender();
+        resetForm();
+      }
+    });
+
+    exportBtn.addEventListener('click', () => {
+      if (allItems.length === 0) {
+        alert('没有物品可导出');
+        return;
+      }
+      const dataStr = JSON.stringify(allItems, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HomeItems_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        if (confirm('✅ 导出成功！\n\n请打开“文件”App → “下载项” → 长按文件 → “移动到 iCloud Drive”以同步到其他设备。')) {}
+      }, 100);
+    });
+
+    importBtn.addEventListener('click', () => {
+      importFile.click();
+    });
+
+    importFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (!Array.isArray(imported)) throw new Error('格式错误');
+          
+          if (!confirm(`将覆盖现有数据（共 ${imported.length} 项），确定导入？`)) return;
+          
+          allItems = imported;
+          saveAndRender();
+          alert('导入成功！');
+        } catch (err) {
+          alert('导入失败：文件格式不正确');
+        }
+      };
+      reader.readAsText(file);
+      importFile.value = '';
+    });
+
+    // 条码扫描
+    async function checkCanScan() {
+      if (location.protocol !== 'https:') return false;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    checkCanScan().then(can => {
+      if (can) scanBtn.style.display = 'block';
+    });
+
+    let codeReader = null;
+    scanBtn.addEventListener('click', async () => {
+      if (scannerContainer.style.display === 'block') {
+        if (codeReader) codeReader.reset();
+        scannerContainer.style.display = 'none';
+        scanBtn.textContent = '📷 扫描条码';
+        return;
+      }
+
+      try {
+        scannerContainer.style.display = 'block';
+        scanBtn.textContent = '⏹ 停止扫描';
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        codeReader.decodeFromVideoDevice(undefined, 'barcodeScanner', (result, err) => {
+          if (result) {
+            itemNameInput.value = result.getText();
+            if (codeReader) codeReader.reset();
+            scannerContainer.style.display = 'none';
+            scanBtn.textContent = '📷 扫描条码';
+            alert(`识别成功：${result.getText()}`);
+          }
+        });
+      } catch (err) {
+        alert('无法启动摄像头，请允许访问。');
+        if (codeReader) codeReader.reset();
+        scannerContainer.style.display = 'none';
+        scanBtn.textContent = '📷 扫描条码';
+      }
+    });
+
+    searchInput.addEventListener('input', renderItems);
+    categoryFilter.addEventListener('change', renderItems);
+
+    function resetForm() {
+      itemNameInput.value = '';
+      itemCategoryInput.value = '';
+      itemImageInput.value = '';
+    }
+
+    renderCategoryFilter();
+    renderItems();
+
+    // PWA Service Worker（基础）
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
