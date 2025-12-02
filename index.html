@@ -182,8 +182,8 @@
 <script>
 // 全局变量
 let items = [];
-let recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库","储藏室"];
-let recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱","写字台"];
+let recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库"];
+let recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱"];
 let recentShelves = ["上层","中层","下层","第一格","第二格"];
 let currentModalType = '';
 
@@ -415,7 +415,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderFormOptions();
       renderItems();
       updateStorageWarning();
-      // 注意：图表在切换到 stats 面板时才渲染（懒加载）
       return true;
     } catch (err) {
       if (err.name === 'QuotaExceededError') {
@@ -494,31 +493,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('totalQuantity').textContent = totalQty;
   }
 
-  function handleEditClick(e) {
-    const itemDiv = e.target.closest('.item');
-    const id = itemDiv.dataset.id;
-    const item = items.find(i => i.id === id);
-    if (!item) return;
-    
-    document.getElementById('editId').value = item.id;
-    document.getElementById('itemName').value = item.name;
-    document.getElementById('itemQuantity').value = item.quantity || 1;
-    document.getElementById('itemCategory').value = item.category || '';
-    document.getElementById('itemRoom').value = item.room;
-    document.getElementById('itemContainer').value = item.container || '';
-    document.getElementById('itemShelf').value = item.shelf_or_compartment || '';
-    document.getElementById('itemLocation').value = item.specific_location || '';
-    document.getElementById('saveBtn').textContent = '💾 保存修改';
-    window.scrollTo(0, 0);
-  }
-
-  function handleDeleteClick(e) {
-    if (!confirm('确定删除此物品？')) return;
-    const itemDiv = e.target.closest('.item');
-    const id = itemDiv.dataset.id;
-    items = items.filter(item => item.id !== id);
-    saveData();
-  }
+  // ✅ 修复 1: 使用事件委托处理编辑/删除
+  document.getElementById('itemsList').addEventListener('click', (e) => {
+    if (e.target.classList.contains('edit-btn')) {
+      const itemDiv = e.target.closest('.item');
+      const id = itemDiv.dataset.id;
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      
+      document.getElementById('editId').value = item.id;
+      document.getElementById('itemName').value = item.name;
+      document.getElementById('itemQuantity').value = item.quantity || 1;
+      document.getElementById('itemCategory').value = item.category || '';
+      document.getElementById('itemRoom').value = item.room;
+      document.getElementById('itemContainer').value = item.container || '';
+      document.getElementById('itemShelf').value = item.shelf_or_compartment || '';
+      document.getElementById('itemLocation').value = item.specific_location || '';
+      document.getElementById('saveBtn').textContent = '💾 保存修改';
+      window.scrollTo(0, 0);
+    } else if (e.target.classList.contains('delete-btn')) {
+      if (!confirm('确定删除此物品？')) return;
+      const itemDiv = e.target.closest('.item');
+      const id = itemDiv.dataset.id;
+      items = items.filter(item => item.id !== id);
+      saveData();
+    }
+  });
 
   function showAddModal(type) {
     currentModalType = type;
@@ -559,6 +559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     handleModalCancel();
   }
 
+  // ✅ 修复 2 & 3: 完善保存逻辑
   async function handleSave() {
     const name = document.getElementById('itemName').value.trim();
     const room = document.getElementById('itemRoom').value.trim();
@@ -573,8 +574,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const shelf = document.getElementById('itemShelf').value.trim();
     const location = document.getElementById('itemLocation').value.trim();
 
+    // 处理图片：编辑时保留原图
     let imageBase64 = '';
+    const editId = document.getElementById('editId').value;
+    const existingItem = editId ? items.find(i => i.id === editId) : null;
     const imageFile = document.getElementById('itemImage').files[0];
+    
     if (imageFile) {
       const compressedBlob = await compressImage(imageFile);
       if (compressedBlob) {
@@ -583,19 +588,31 @@ document.addEventListener('DOMContentLoaded', async () => {
           reader.onload = () => r(reader.result);
           reader.readAsDataURL(compressedBlob);
         });
+      } else {
+        alert('图片处理失败，请重试。');
+        return;
       }
+    } else if (existingItem) {
+      // 保留原图
+      imageBase64 = existingItem.image || '';
     }
 
+    // 处理二维码
     let qrContent = '';
     const qrFile = document.getElementById('itemQrCode').files[0];
     if (qrFile) {
       qrContent = await decodeQRFromFile(qrFile);
-      if (!qrContent) {
-        alert('未能识别二维码，请确保图片清晰且包含有效二维码。');
+      if (qrContent === null) {
+        // ✅ 修复 3: 识别失败则阻止保存
+        alert('未能识别二维码，请确保图片清晰且包含有效二维码。\n请重新上传或取消二维码上传。');
+        document.getElementById('itemQrCode').value = ''; // 清空文件选择
+        return;
       }
+    } else if (existingItem) {
+      // 保留原二维码内容
+      qrContent = existingItem.qr_code || '';
     }
 
-    const editId = document.getElementById('editId').value;
     if (editId) {
       const index = items.findIndex(i => i.id === editId);
       if (index >= 0) {
@@ -688,7 +705,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panel = document.getElementById(`${tabName}Panel`);
     panel.style.display = 'block';
 
-    // 懒加载：仅在首次进入统计面板时渲染图表
     if (tabName === 'stats' && !panel.dataset.rendered) {
       renderCharts();
       panel.dataset.rendered = 'true';
