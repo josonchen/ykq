@@ -134,7 +134,7 @@
     <div id="managePanel">
       <input type="text" id="searchInput" placeholder="🔍 搜索物品名称或位置..." />
 
-      <!-- 存储空间提示（新增） -->
+      <!-- 存储空间提示（仅用于友好提示） -->
       <div id="storageWarning" class="storage-warning" style="display:none;"></div>
 
       <!-- 表单 -->
@@ -234,37 +234,29 @@
     }
 
     // ======================
-    // 【新增】估算 localStorage 占用（字节）
+    // 【✅ 修复版】精确判断数据是否过大（基于 JSON 字符串的 UTF-8 字节数）
     // ======================
-    function estimateStorageUsage() {
-      let total = 0;
-      for (let key in localStorage) {
-        total += localStorage[key].length * 2; // UTF-16: ~2 bytes per char
+    function isDataTooLarge(dataToSave, maxSizeBytes = 4_700_000) {
+      try {
+        const jsonString = JSON.stringify(dataToSave);
+        // 使用 TextEncoder 获取真实字节数（UTF-8）
+        const byteLength = new TextEncoder().encode(jsonString).length;
+        return byteLength > maxSizeBytes;
+      } catch (e) {
+        console.warn('序列化数据失败，保守认为过大', e);
+        return true;
       }
-      return total; // bytes
     }
 
     // ======================
-    // 【新增】检查剩余空间是否足够（预留 1MB 安全余量）
-    // ======================
-    function hasEnoughStorage(dataToSave) {
-      const currentUsage = estimateStorageUsage();
-      const newDataSize = new Blob([JSON.stringify(dataToSave)]).size;
-      const totalEstimate = currentUsage + newDataSize;
-      const quota = 5 * 1024 * 1024; // 假设上限 5MB
-      return totalEstimate < (quota - 1_000_000); // 预留 1MB
-    }
-
-    // ======================
-    // 【更新】保存数据（带容量预检）
+    // 【✅ 修复版】保存数据（仅检查待保存数据大小）
     // ======================
     function saveData() {
       try {
         const dataToSave = { items, recentRooms, recentContainers, recentShelves };
         
-        // ✅ 自动检测存储余量
-        if (!hasEnoughStorage(dataToSave)) {
-          alert('⚠️ 存储空间即将不足！\n建议删除部分带图物品后再保存。');
+        if (isDataTooLarge(dataToSave)) {
+          alert('⚠️ 数据过大（超过 4.7MB）！\n请删除部分带图物品后再保存。');
           return false;
         }
 
@@ -276,33 +268,53 @@
         renderFormOptions();
         renderItems();
         renderStats();
-        updateStorageWarning(); // 更新提示
+        updateStorageWarning(); // 更新提示（仅 UI）
         return true;
       } catch (err) {
         if (err.name === 'QuotaExceededError') {
-          alert('⚠️ 存储空间不足！\n请删除部分带图物品，或导出后清空数据。');
+          alert('⚠️ 浏览器存储空间不足！\n建议：\n1. 点击“清空所有数据”\n2. 重启浏览器\n3. 再导入小文件');
         } else {
-          alert('❌ 保存失败：' + err.message);
+          alert('❌ 保存失败：' + (err.message || err));
         }
         return false;
       }
     }
 
     // ======================
-    // 【新增】强制清空数据
+    // 【✅ 修复版】更新存储提示（仅用于显示当前数据大小）
+    // ======================
+    function updateStorageWarning() {
+      try {
+        const dataToSave = { items, recentRooms, recentContainers, recentShelves };
+        const jsonString = JSON.stringify(dataToSave);
+        const byteLength = new TextEncoder().encode(jsonString).length;
+        const mb = (byteLength / 1024 / 1024).toFixed(2);
+        
+        const warningEl = document.getElementById('storageWarning');
+        if (byteLength > 4_000_000) { // >4MB 时提示
+          warningEl.innerHTML = `💡 当前数据大小约 ${mb} MB`;
+          warningEl.style.display = 'block';
+        } else {
+          warningEl.style.display = 'none';
+        }
+      } catch (e) {
+        document.getElementById('storageWarning').style.display = 'none';
+      }
+    }
+
+    // ======================
+    // 【✅ 修复版】强制清空数据
     // ======================
     function clearAllData() {
       if (!confirm('⚠️ 警告：此操作将永久删除所有物品和设置！\n\n请确保已先导出备份。是否继续？')) {
         return;
       }
 
-      // 清空内存
       items = [];
       recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库"];
       recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱"];
       recentShelves = ["上层","中层","下层","第一格","第二格"];
 
-      // 清空 localStorage
       localStorage.removeItem('homeItems_v4');
       localStorage.removeItem('recentRooms');
       localStorage.removeItem('recentContainers');
@@ -322,50 +334,34 @@
     }
 
     // ======================
-    // 【新增】更新存储空间提示
-    // ======================
-    function updateStorageWarning() {
-      const usage = estimateStorageUsage();
-      const mb = (usage / 1024 / 1024).toFixed(2);
-      const warningEl = document.getElementById('storageWarning');
-      
-      if (usage > 4 * 1024 * 1024) { // >4MB
-        warningEl.innerHTML = `💡 当前本地存储占用约 ${mb} MB，接近上限。建议减少图片使用。`;
-        warningEl.style.display = 'block';
-      } else {
-        warningEl.style.display = 'none';
-      }
-    }
-
-    // ======================
-    // 【更新】安全导入（先清内存再加载）
+    // 【✅ 修复版】安全导入（先清内存再加载）
     // ======================
     function safeImportData(data) {
       try {
-        // ✅ 先清空当前内存中的数据
+        // 清空当前内存
         items = [];
         recentRooms = [];
         recentContainers = [];
         recentShelves = [];
 
-        // 再加载新数据
+        // 加载新数据
         if (data.items) items = data.items;
         if (data.recentRooms) recentRooms = data.recentRooms;
         if (data.recentContainers) recentContainers = data.recentContainers;
         if (data.recentShelves) recentShelves = data.recentShelves;
 
-        // 保存到 localStorage
+        // 尝试保存（使用新判断逻辑）
         if (!saveData()) {
-          throw new Error('存储空间不足，无法保存导入的数据');
+          throw new Error('数据过大，无法保存');
         }
 
         alert('✅ 安全导入成功！');
       } catch (err) {
-        // 导入失败时回滚到空状态（避免脏数据）
+        // 导入失败：保持空状态（不恢复默认值）
         items = [];
-        recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库"];
-        recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱"];
-        recentShelves = ["上层","中层","下层","第一格","第二格"];
+        recentRooms = [];
+        recentContainers = [];
+        recentShelves = [];
         alert('❌ 导入失败：' + err.message);
       }
     }
@@ -622,7 +618,7 @@
         resetForm();
         if (!saveData()) {
           if (!document.getElementById('editId').value) items.pop();
-          throw new Error('存储空间不足');
+          throw new Error('数据过大，无法保存');
         }
         alert(document.getElementById('editId').value ? '✅ 修改成功！' : '✅ 添加成功！');
       } catch (err) {
@@ -677,7 +673,7 @@
       }, 100);
     });
 
-    // 【更新】安全导入流程
+    // 【✅ 修复版】安全导入流程
     let importFile = document.createElement('input');
     importFile.type = 'file';
     importFile.accept = '.json';
@@ -693,7 +689,6 @@
           
           if (!confirm(`将覆盖现有数据（共 ${data.items.length} 项），确定导入？`)) return;
           
-          // ✅ 使用安全导入
           safeImportData(data);
         } catch (err) {
           alert('导入失败：' + (err.message || '文件格式不正确'));
@@ -705,7 +700,7 @@
     document.body.appendChild(importFile);
     document.getElementById('importBtn').addEventListener('click', () => importFile.click());
 
-    // 【新增】清空数据按钮
+    // 【✅ 修复版】清空数据按钮
     document.getElementById('clearDataBtn').addEventListener('click', clearAllData);
 
     // ======================
@@ -777,7 +772,7 @@
     document.getElementById('searchInput').addEventListener('input', renderItems);
     renderFormOptions();
     renderItems();
-    updateStorageWarning(); // 显示初始存储状态
+    updateStorageWarning(); // 显示初始数据大小
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
