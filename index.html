@@ -7,6 +7,8 @@
   <title>🏠 家用物品管家</title>
   <link rel="manifest" href="manifest.json" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 引入 jsQR 用于二维码识别 -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -93,6 +95,18 @@
     .form-group {
       margin: 8px 0;
     }
+    .qr-content {
+      margin-top: 8px;
+      padding: 8px;
+      background: #f0f8ff;
+      border-radius: 6px;
+      font-size: 14px;
+      word-break: break-all;
+    }
+    .qr-content a {
+      color: #4A90E2;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -136,17 +150,18 @@
         <input type="text" id="itemShelf" placeholder="层/格（如：上层、第二格）" list="shelfList" />
         <textarea id="itemLocation" placeholder="具体位置描述（如：左上角抽屉内）"></textarea>
 
-        <!-- 明确标注图片上传 -->
+        <!-- 物品照片 -->
         <div class="form-group">
           <label for="itemImage">📸 物品照片（可选）</label>
           <input type="file" id="itemImage" accept="image/*" capture="environment" />
-          <div class="hint">建议拍摄清晰正面照，系统将自动压缩以节省空间</div>
+          <div class="hint">系统将自动压缩以节省空间</div>
         </div>
 
+        <!-- 二维码上传（仅提取内容） -->
         <div class="form-group">
-          <label for="itemQrCode">🏷️ 二维码标签（可选）</label>
+          <label for="itemQrCode">🏷️ 上传二维码图片</label>
           <input type="file" id="itemQrCode" accept="image/*" />
-          <div class="hint">用于快速扫码定位物品（自动压缩）</div>
+          <div class="hint">自动识别内容，不保存原图（支持 URL、文本等）</div>
         </div>
 
         <button id="saveBtn">➕ 添加物品</button>
@@ -179,14 +194,14 @@
   <datalist id="shelfList"></datalist>
 
   <footer>
-    数据保存在本机 · 导出 JSON 到 iCloud Drive 可跨设备同步
+    数据保存在本机 · 二维码仅存文本内容 · 导出 JSON 可跨设备同步
   </footer>
 
   <script>
     // ======================
     // 数据模型
     // ======================
-    let items = JSON.parse(localStorage.getItem('homeItems_v3') || '[]');
+    let items = JSON.parse(localStorage.getItem('homeItems_v4') || '[]');
     let recentRooms = JSON.parse(localStorage.getItem('recentRooms') || '["主卧","次卧","厨房","客厅","卫生间","阳台","车库"]');
     let recentContainers = JSON.parse(localStorage.getItem('recentContainers') || '["衣柜","抽屉","工具箱","书架","冰箱"]');
     let recentShelves = JSON.parse(localStorage.getItem('recentShelves') || '["上层","中层","下层","第一格","第二格"]');
@@ -213,7 +228,7 @@
     const totalItemsEl = document.getElementById('totalItems');
 
     // ======================
-    // 【新增】图片压缩函数（关键优化）
+    // 【新增】图片压缩函数（仅用于物品照片）
     // ======================
     async function compressImage(file, maxWidth = 400, quality = 0.65) {
       return new Promise((resolve, reject) => {
@@ -255,6 +270,41 @@
     }
 
     // ======================
+    // 【新增】二维码解码函数
+    // ======================
+    async function decodeQRFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.src = url;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+
+          try {
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code) {
+              resolve(code.data.trim());
+            } else {
+              reject(new Error('未检测到有效二维码，请确保图片清晰且仅含一个二维码'));
+            }
+          } catch (err) {
+            reject(new Error('二维码解析失败：' + (err.message || err)));
+          }
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('图片加载失败'));
+        };
+      });
+    }
+
+    // ======================
     // 工具函数
     // ======================
     function uuid() {
@@ -272,7 +322,7 @@
 
     function saveData() {
       try {
-        localStorage.setItem('homeItems_v3', JSON.stringify(items));
+        localStorage.setItem('homeItems_v4', JSON.stringify(items));
         localStorage.setItem('recentRooms', JSON.stringify(recentRooms));
         localStorage.setItem('recentContainers', JSON.stringify(recentContainers));
         localStorage.setItem('recentShelves', JSON.stringify(recentShelves));
@@ -331,25 +381,42 @@
       const filtered = items.filter(item =>
         item.name.toLowerCase().includes(term) ||
         getLocationPath(item).toLowerCase().includes(term) ||
-        (item.specific_location && item.specific_location.toLowerCase().includes(term))
+        (item.specific_location && item.specific_location.toLowerCase().includes(term)) ||
+        (item.qr_code && item.qr_code.toLowerCase().includes(term))
       );
 
       itemsList.innerHTML = filtered.length === 0
         ? '<p style="text-align:center;color:#888;">暂无物品</p>'
-        : filtered.map(item => `
-          <div class="item">
-            <strong>${item.name}</strong>
-            ${item.category ? `<br><small>📂 ${item.category}</small>` : ''}
-            <div class="location-path">${getLocationPath(item)}</div>
-            ${item.specific_location ? `<div>${item.specific_location}</div>` : ''}
-            ${item.image ? `<img src="${item.image}" alt="${item.name}" style="max-height:100px;">` : ''}
-            ${item.qr_code ? `<img src="${item.qr_code}" alt="QR" style="width:60px;height:60px;margin-top:8px;">` : ''}
-            <div style="margin-top:10px;">
-              <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="editItem('${item.id}')">✏️ 编辑</button>
-              <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="deleteItem('${item.id}')">🗑️ 删除</button>
-            </div>
-          </div>
-        `).join('');
+        : filtered.map(item => {
+            let qrDisplay = '';
+            if (item.qr_code) {
+              const isUrl = item.qr_code.startsWith('http://') || item.qr_code.startsWith('https://');
+              qrDisplay = `
+                <div class="qr-content">
+                  <strong>🔗 二维码内容：</strong>
+                  ${isUrl 
+                    ? `<a href="${item.qr_code}" target="_blank" rel="noopener">${item.qr_code}</a>`
+                    : `<span>${item.qr_code}</span>`
+                  }
+                </div>
+              `;
+            }
+
+            return `
+              <div class="item">
+                <strong>${item.name}</strong>
+                ${item.category ? `<br><small>📂 ${item.category}</small>` : ''}
+                <div class="location-path">${getLocationPath(item)}</div>
+                ${item.specific_location ? `<div>${item.specific_location}</div>` : ''}
+                ${item.image ? `<img src="${item.image}" alt="${item.name}" style="max-height:100px;">` : ''}
+                ${qrDisplay}
+                <div style="margin-top:10px;">
+                  <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="editItem('${item.id}')">✏️ 编辑</button>
+                  <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="deleteItem('${item.id}')">🗑️ 删除</button>
+                </div>
+              </div>
+            `;
+          }).join('');
 
       totalItemsEl.textContent = items.length;
     }
@@ -381,7 +448,7 @@
     }
 
     // ======================
-    // 保存（新增或更新）—— 核心修复点
+    // 保存（新增或更新）—— 核心逻辑
     // ======================
     saveBtn.addEventListener('click', async () => {
       const name = itemName.value.trim();
@@ -393,33 +460,35 @@
         return;
       }
 
-      // 文件大小预检（防止大图直接崩溃）
+      // 文件大小预检
       const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
-      const MAX_QR_SIZE = 1 * 1024 * 1024;     // 1MB
+      const MAX_QR_SIZE = 2 * 1024 * 1024;     // 2MB（因不存图，可稍大）
 
       if (itemImage.files[0] && itemImage.files[0].size > MAX_IMAGE_SIZE) {
-        alert('📸 物品照片不能超过 2MB，请选择较小图片或使用相机拍摄。');
+        alert('📸 物品照片不能超过 2MB');
         return;
       }
       if (itemQrCode.files[0] && itemQrCode.files[0].size > MAX_QR_SIZE) {
-        alert('🏷️ 二维码图片不能超过 1MB。');
+        alert('🏷️ 二维码图片不能超过 2MB');
         return;
       }
 
-      // 禁用按钮，防止重复提交
       const originalText = saveBtn.textContent;
       saveBtn.disabled = true;
       saveBtn.textContent = '⏳ 保存中...';
 
       try {
         let imageBase64 = '';
-        let qrBase64 = '';
+        let qrContent = '';
 
+        // 压缩物品照片
         if (itemImage.files[0]) {
-          imageBase64 = await compressImage(itemImage.files[0], 400, 0.65); // 更小尺寸
+          imageBase64 = await compressImage(itemImage.files[0], 400, 0.65);
         }
+
+        // 解码二维码（只存文本）
         if (itemQrCode.files[0]) {
-          qrBase64 = await compressImage(itemQrCode.files[0], 200, 0.75); // 二维码可稍高质
+          qrContent = await decodeQRFromFile(itemQrCode.files[0]);
         }
 
         const newItem = {
@@ -431,7 +500,7 @@
           shelf_or_compartment: itemShelf.value.trim() || null,
           specific_location: itemLocation.value.trim() || null,
           image: imageBase64,
-          qr_code: qrBase64,
+          qr_code: qrContent, // ← 纯字符串！
           created_at: editId.value ? items.find(i => i.id === editId.value)?.created_at : new Date().toISOString()
         };
 
@@ -449,10 +518,8 @@
 
         resetForm();
 
-        // 保存并检查 quota
         if (!saveData()) {
-          // 如果保存失败（如 quota 满），恢复 items（避免数据丢失）
-          if (!editId.value) items.pop(); // 回滚新增
+          if (!editId.value) items.pop();
           throw new Error('存储空间不足');
         }
 
@@ -555,32 +622,22 @@
       const ctx2 = document.getElementById('categoryChart').getContext('2d');
       const ctx3 = document.getElementById('containerChart').getContext('2d');
 
-      // 按房间统计
       const roomCount = {};
-      items.forEach(i => {
-        roomCount[i.room] = (roomCount[i.room] || 0) + 1;
-      });
+      items.forEach(i => { roomCount[i.room] = (roomCount[i.room] || 0) + 1; });
       const roomLabels = Object.keys(roomCount);
       const roomData = Object.values(roomCount);
 
-      // 按分类统计
       const catCount = {};
-      items.filter(i => i.category).forEach(i => {
-        catCount[i.category] = (catCount[i.category] || 0) + 1;
-      });
+      items.filter(i => i.category).forEach(i => { catCount[i.category] = (catCount[i.category] || 0) + 1; });
       const catLabels = Object.keys(catCount);
       const catData = Object.values(catCount);
 
-      // 按容器统计（Top 5）
       const contCount = {};
-      items.filter(i => i.container).forEach(i => {
-        contCount[i.container] = (contCount[i.container] || 0) + 1;
-      });
+      items.filter(i => i.container).forEach(i => { contCount[i.container] = (contCount[i.container] || 0) + 1; });
       const sortedCont = Object.entries(contCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
       const contLabels = sortedCont.map(x => x[0]);
       const contData = sortedCont.map(x => x[1]);
 
-      // Destroy old charts
       if (roomChart) roomChart.destroy();
       if (categoryChart) categoryChart.destroy();
       if (containerChart) containerChart.destroy();
