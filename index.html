@@ -94,11 +94,11 @@
 
   <textarea id="itemLocation" placeholder="具体位置描述（可选）" rows="2"></textarea>
 
-  <!-- ✅ 关键修复：用 label 替代 div + JS click -->
+  <!-- ✅ 关键修复：移除 capture 属性，确保 iOS 兼容 -->
   <label for="itemImage" id="photoUploadArea">
     👆 点击选择照片或拍照
   </label>
-  <input type="file" id="itemImage" accept="image/*"  style="display:none;" />
+  <input type="file" id="itemImage" accept="image/*" style="display:none;" />
 
   <label for="itemQrCode" style="display:block; text-align:center; padding:12px; background:#f0f8ff; border:1px dashed #4A90E2; border-radius:6px; margin:10px 0; cursor:pointer;">
     🏷️ 点击上传二维码图片（自动识别内容）
@@ -746,4 +746,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
