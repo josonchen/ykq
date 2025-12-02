@@ -224,571 +224,567 @@
 
   <script>
     // ======================
-    // 全局数据
+    // 全局数据（仅声明，不操作 DOM）
     // ======================
     let items = [];
     let recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库"];
     let recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱"];
     let recentShelves = ["上层","中层","下层","第一格","第二格"];
-
+    
     // ======================
-    // 初始化数据（从 localStorage 加载）
+    // 所有 DOM 操作必须在 DOMContentLoaded 后执行
     // ======================
-    function loadDataFromStorage() {
-      try {
-        const savedItems = localStorage.getItem('homeItems_v4');
-        if (savedItems) items = JSON.parse(savedItems);
-        const rooms = localStorage.getItem('recentRooms');
-        if (rooms) recentRooms = JSON.parse(rooms);
-        const containers = localStorage.getItem('recentContainers');
-        if (containers) recentContainers = JSON.parse(containers);
-        const shelves = localStorage.getItem('recentShelves');
-        if (shelves) recentShelves = JSON.parse(shelves);
-      } catch (e) {
-        console.warn('加载本地数据失败，使用默认值', e);
+    document.addEventListener('DOMContentLoaded', () => {
+      // ----------------------
+      // 工具函数（保持不变）
+      // ----------------------
+      function isDataTooLarge(dataToSave, maxSizeBytes = 4_700_000) {
+        try {
+          const jsonString = JSON.stringify(dataToSave);
+          const byteLength = new TextEncoder().encode(jsonString).length;
+          return byteLength > maxSizeBytes;
+        } catch (e) {
+          console.warn('序列化数据失败，保守认为过大', e);
+          return true;
+        }
       }
-    }
-
-    // ======================
-    // 【✅ 修复版】精确判断数据是否过大（基于 JSON 字符串的 UTF-8 字节数）
-    // ======================
-    function isDataTooLarge(dataToSave, maxSizeBytes = 4_700_000) {
-      try {
-        const jsonString = JSON.stringify(dataToSave);
-        const byteLength = new TextEncoder().encode(jsonString).length;
-        return byteLength > maxSizeBytes;
-      } catch (e) {
-        console.warn('序列化数据失败，保守认为过大', e);
-        return true;
-      }
-    }
-
-    // ======================
-    // 【✅ 修复版】保存数据（仅检查待保存数据大小）
-    // ======================
-    function saveData() {
-      try {
-        const dataToSave = { items, recentRooms, recentContainers, recentShelves };
-        
-        if (isDataTooLarge(dataToSave)) {
-          alert('⚠️ 数据过大（超过 4.7MB）！\n请删除部分带图物品后再保存。');
+    
+      function saveData() {
+        try {
+          const dataToSave = { items, recentRooms, recentContainers, recentShelves };
+          
+          if (isDataTooLarge(dataToSave)) {
+            alert('⚠️ 数据过大（超过 4.7MB）！\n请删除部分带图物品后再保存。');
+            return false;
+          }
+    
+          localStorage.setItem('homeItems_v4', JSON.stringify(items));
+          localStorage.setItem('recentRooms', JSON.stringify(recentRooms));
+          localStorage.setItem('recentContainers', JSON.stringify(recentContainers));
+          localStorage.setItem('recentShelves', JSON.stringify(recentShelves));
+    
+          renderFormOptions();
+          renderItems();
+          renderStats();
+          updateStorageWarning();
+          return true;
+        } catch (err) {
+          if (err.name === 'QuotaExceededError') {
+            alert('⚠️ 浏览器存储空间不足！\n建议：\n1. 点击“清空所有数据”\n2. 重启浏览器\n3. 再导入小文件');
+          } else {
+            alert('❌ 保存失败：' + (err.message || err));
+          }
           return false;
         }
-
-        localStorage.setItem('homeItems_v4', JSON.stringify(items));
-        localStorage.setItem('recentRooms', JSON.stringify(recentRooms));
-        localStorage.setItem('recentContainers', JSON.stringify(recentContainers));
-        localStorage.setItem('recentShelves', JSON.stringify(recentShelves));
-
+      }
+    
+      function updateStorageWarning() {
+        try {
+          const dataToSave = { items, recentRooms, recentContainers, recentShelves };
+          const jsonString = JSON.stringify(dataToSave);
+          const byteLength = new TextEncoder().encode(jsonString).length;
+          const mb = (byteLength / 1024 / 1024).toFixed(2);
+          
+          const warningEl = document.getElementById('storageWarning');
+          if (byteLength > 4_000_000) {
+            warningEl.innerHTML = `💡 当前数据大小约 ${mb} MB`;
+            warningEl.style.display = 'block';
+          } else {
+            warningEl.style.display = 'none';
+          }
+        } catch (e) {
+          document.getElementById('storageWarning').style.display = 'none';
+        }
+      }
+    
+      function clearAllData() {
+        if (!confirm('⚠️ 警告：此操作将永久删除所有物品和设置！\n\n请确保已先导出备份。是否继续？')) {
+          return;
+        }
+    
+        items = [];
+        recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库"];
+        recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱"];
+        recentShelves = ["上层","中层","下层","第一格","第二格"];
+    
+        localStorage.removeItem('homeItems_v4');
+        localStorage.removeItem('recentRooms');
+        localStorage.removeItem('recentContainers');
+        localStorage.removeItem('recentShelves');
+    
+        Object.keys(localStorage).forEach(key => {
+          if (/home|item|room|container|shelf/i.test(key)) {
+            localStorage.removeItem(key);
+          }
+        });
+    
         renderFormOptions();
         renderItems();
-        renderStats();
         updateStorageWarning();
-        return true;
-      } catch (err) {
-        if (err.name === 'QuotaExceededError') {
-          alert('⚠️ 浏览器存储空间不足！\n建议：\n1. 点击“清空所有数据”\n2. 重启浏览器\n3. 再导入小文件');
-        } else {
-          alert('❌ 保存失败：' + (err.message || err));
+        alert('✅ 所有数据已清空！');
+      }
+    
+      function safeImportData(data) {
+        try {
+          items = [];
+          recentRooms = [];
+          recentContainers = [];
+          recentShelves = [];
+    
+          if (data.items) items = data.items;
+          if (data.recentRooms) recentRooms = data.recentRooms;
+          if (data.recentContainers) recentContainers = data.recentContainers;
+          if (data.recentShelves) recentShelves = data.recentShelves;
+    
+          if (!saveData()) {
+            throw new Error('数据过大，无法保存');
+          }
+    
+          alert('✅ 安全导入成功！');
+        } catch (err) {
+          items = [];
+          recentRooms = [];
+          recentContainers = [];
+          recentShelves = [];
+          alert('❌ 导入失败：' + err.message);
         }
-        return false;
       }
-    }
-
-    // ======================
-    // 【✅ 修复版】更新存储提示（仅用于显示当前数据大小）
-    // ======================
-    function updateStorageWarning() {
-      try {
-        const dataToSave = { items, recentRooms, recentContainers, recentShelves };
-        const jsonString = JSON.stringify(dataToSave);
-        const byteLength = new TextEncoder().encode(jsonString).length;
-        const mb = (byteLength / 1024 / 1024).toFixed(2);
-        
-        const warningEl = document.getElementById('storageWarning');
-        if (byteLength > 4_000_000) {
-          warningEl.innerHTML = `💡 当前数据大小约 ${mb} MB`;
-          warningEl.style.display = 'block';
-        } else {
-          warningEl.style.display = 'none';
+    
+      async function compressImage(file, maxWidth = 400, quality = 0.65) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          const url = URL.createObjectURL(file);
+          img.src = url;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            let { width, height } = img;
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(blob => {
+              URL.revokeObjectURL(url);
+              if (!blob) return reject(new Error('Canvas toBlob 失败'));
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(new Error('读取压缩图像失败'));
+              reader.readAsDataURL(blob);
+            }, 'image/jpeg', quality);
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('加载图像失败'));
+          };
+        });
+      }
+    
+      async function decodeQRFromFile(file) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          const url = URL.createObjectURL(file);
+          img.src = url;
+          img.onload = () => {
+            const MAX_DIMENSION = 1500;
+            let { width, height } = img;
+            if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+              const scale = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+              width = Math.floor(width * scale);
+              height = Math.floor(height * scale);
+            }
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            const imageData = ctx.getImageData(0, 0, width, height);
+            URL.revokeObjectURL(url);
+            try {
+              const code = jsQR(imageData.data, width, height);
+              if (code) resolve(code.data.trim());
+              else reject(new Error('未检测到有效二维码，请确保图片清晰且仅含一个二维码'));
+            } catch (err) {
+              reject(new Error('二维码解析失败：' + (err.message || err)));
+            }
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('图片加载失败'));
+          };
+        });
+      }
+    
+      function uuid() {
+        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+      }
+    
+      function getLocationPath(item) {
+        let path = item.room;
+        if (item.container) path += ` > ${item.container}`;
+        if (item.shelf_or_compartment) path += ` > ${item.shelf_or_compartment}`;
+        return path;
+      }
+    
+      function renderFormOptions() {
+        const itemRoom = document.getElementById('itemRoom');
+        const itemContainer = document.getElementById('itemContainer');
+        const categoryList = document.getElementById('categoryList');
+        const shelfList = document.getElementById('shelfList');
+    
+        itemRoom.innerHTML = '';
+        recentRooms.forEach(room => {
+          const opt = document.createElement('option');
+          opt.value = room;
+          opt.textContent = room;
+          itemRoom.appendChild(opt);
+        });
+    
+        itemContainer.innerHTML = '<option value="">容器（如：衣柜、工具箱）</option>' +
+          recentContainers.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+        categoryList.innerHTML = '';
+        [...new Set(items.map(i => i.category).filter(Boolean))].forEach(cat => {
+          const opt = document.createElement('option');
+          opt.value = cat;
+          categoryList.appendChild(opt);
+        });
+    
+        shelfList.innerHTML = '';
+        recentShelves.forEach(shelf => {
+          const opt = document.createElement('option');
+          opt.value = shelf;
+          shelfList.appendChild(opt);
+        });
+      }
+    
+      function renderItems() {
+        const searchInput = document.getElementById('searchInput');
+        const itemsList = document.getElementById('itemsList');
+        const term = searchInput.value.trim().toLowerCase();
+        const filtered = items.filter(item =>
+          item.name.toLowerCase().includes(term) ||
+          getLocationPath(item).toLowerCase().includes(term) ||
+          (item.specific_location && item.specific_location.toLowerCase().includes(term)) ||
+          (item.qr_code && item.qr_code.toLowerCase().includes(term))
+        );
+    
+        itemsList.innerHTML = filtered.length === 0
+          ? '<p style="text-align:center;color:#888;">暂无物品</p>'
+          : filtered.map(item => {
+              let qrDisplay = '';
+              if (item.qr_code) {
+                const isUrl = /^https?:\/\//.test(item.qr_code);
+                qrDisplay = `
+                  <div class="qr-content">
+                    <strong>🔗 二维码内容：</strong>
+                    ${isUrl 
+                      ? `<a href="${item.qr_code}" target="_blank" rel="noopener">${item.qr_code}</a>`
+                      : `<span>${item.qr_code}</span>`
+                    }
+                  </div>
+                `;
+              }
+    
+              return `
+                <div class="item">
+                  <strong>${item.name}</strong>
+                  ${item.category ? `<br><small>📂 ${item.category}</small>` : ''}
+                  <div class="location-path">${getLocationPath(item)}</div>
+                  ${item.specific_location ? `<div>${item.specific_location}</div>` : ''}
+                  ${item.image ? `<img src="${item.image}" alt="${item.name}" style="max-height:100px;">` : ''}
+                  ${qrDisplay}
+                  <div style="margin-top:10px;">
+                    <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="editItem('${item.id}')">✏️ 编辑</button>
+                    <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="deleteItem('${item.id}')">🗑️ 删除</button>
+                  </div>
+                </div>
+              `;
+            }).join('');
+    
+        document.getElementById('totalItems').textContent = items.length;
+      }
+    
+      function editItem(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+        document.getElementById('editId').value = item.id;
+        document.getElementById('itemName').value = item.name;
+        document.getElementById('itemCategory').value = item.category || '';
+        document.getElementById('itemRoom').value = item.room;
+        document.getElementById('itemContainer').value = item.container || '';
+        document.getElementById('itemShelf').value = item.shelf_or_compartment || '';
+        document.getElementById('itemLocation').value = item.specific_location || '';
+        document.getElementById('saveBtn').textContent = '💾 保存修改';
+        window.scrollTo(0, 0);
+      }
+    
+      function deleteItem(id) {
+        if (confirm('确定删除此物品？')) {
+          items = items.filter(item => item.id !== id);
+          saveData();
         }
-      } catch (e) {
-        document.getElementById('storageWarning').style.display = 'none';
       }
-    }
-
-    // ======================
-    // 【✅ 修复版】强制清空数据
-    // ======================
-    function clearAllData() {
-      if (!confirm('⚠️ 警告：此操作将永久删除所有物品和设置！\n\n请确保已先导出备份。是否继续？')) {
-        return;
-      }
-
-      items = [];
-      recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库"];
-      recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱"];
-      recentShelves = ["上层","中层","下层","第一格","第二格"];
-
-      localStorage.removeItem('homeItems_v4');
-      localStorage.removeItem('recentRooms');
-      localStorage.removeItem('recentContainers');
-      localStorage.removeItem('recentShelves');
-
-      Object.keys(localStorage).forEach(key => {
-        if (/home|item|room|container|shelf/i.test(key)) {
-          localStorage.removeItem(key);
+    
+      // ----------------------
+      // 【✅ 关键修复】在此处绑定点击事件（DOM 已就绪）
+      // ----------------------
+      document.getElementById('photoUploadArea').addEventListener('click', () => {
+        document.getElementById('itemImage').click();
+      });
+    
+      // ----------------------
+      // 保存按钮逻辑
+      // ----------------------
+      document.getElementById('saveBtn').addEventListener('click', async () => {
+        const itemName = document.getElementById('itemName');
+        const itemRoom = document.getElementById('itemRoom');
+        const name = itemName.value.trim();
+        const room = itemRoom.value.trim();
+        if (!name || !room) {
+          alert('请填写物品名称和房间');
+          return;
+        }
+    
+        const MAX_QR_SIZE = 5 * 1024 * 1024;
+        const itemQrCode = document.getElementById('itemQrCode');
+        if (itemQrCode.files[0] && itemQrCode.files[0].size > MAX_QR_SIZE) {
+          alert('🏷️ 二维码图片过大（超过 5MB）\n\n💡 建议：\n• 截图只包含二维码区域\n• 用微信/QQ转发后保存（自动压缩）\n• 使用系统相册编辑裁剪');
+          return;
+        }
+    
+        const originalText = document.getElementById('saveBtn').textContent;
+        document.getElementById('saveBtn').disabled = true;
+        document.getElementById('saveBtn').textContent = '⏳ 保存中...';
+    
+        try {
+          let imageBase64 = '';
+          let qrContent = '';
+    
+          const itemImage = document.getElementById('itemImage');
+          if (itemImage.files[0]) {
+            imageBase64 = await compressImage(itemImage.files[0]);
+          }
+          if (itemQrCode.files[0]) {
+            qrContent = await decodeQRFromFile(itemQrCode.files[0]);
+          }
+    
+          const newItem = {
+            id: document.getElementById('editId').value || uuid(),
+            name,
+            category: document.getElementById('itemCategory').value.trim() || null,
+            room,
+            container: document.getElementById('itemContainer').value.trim() || null,
+            shelf_or_compartment: document.getElementById('itemShelf').value.trim() || null,
+            specific_location: document.getElementById('itemLocation').value.trim() || null,
+            image: imageBase64,
+            qr_code: qrContent,
+            created_at: document.getElementById('editId').value 
+              ? items.find(i => i.id === document.getElementById('editId').value)?.created_at 
+              : new Date().toISOString()
+          };
+    
+          if (document.getElementById('editId').value) {
+            items = items.map(i => i.id === document.getElementById('editId').value ? newItem : i);
+          } else {
+            if (!recentRooms.includes(newItem.room)) recentRooms.unshift(newItem.room);
+            if (newItem.container && !recentContainers.includes(newItem.container)) recentContainers.unshift(newItem.container);
+            if (newItem.shelf_or_compartment && !recentShelves.includes(newItem.shelf_or_compartment)) recentShelves.unshift(newItem.shelf_or_compartment);
+            recentRooms = recentRooms.slice(0, 20);
+            recentContainers = recentContainers.slice(0, 20);
+            recentShelves = recentShelves.slice(0, 20);
+            items.push(newItem);
+          }
+    
+          resetForm();
+          if (!saveData()) {
+            if (!document.getElementById('editId').value) items.pop();
+            throw new Error('数据过大，无法保存');
+          }
+          alert(document.getElementById('editId').value ? '✅ 修改成功！' : '✅ 添加成功！');
+        } catch (err) {
+          console.error(err);
+          alert('❌ 保存失败：' + (err.message || '未知错误，请重试'));
+        } finally {
+          document.getElementById('saveBtn').disabled = false;
+          document.getElementById('saveBtn').textContent = originalText;
         }
       });
-
+    
+      function resetForm() {
+        document.getElementById('editId').value = '';
+        document.getElementById('itemName').value = '';
+        document.getElementById('itemCategory').value = '';
+        document.getElementById('itemShelf').value = '';
+        document.getElementById('itemLocation').value = '';
+        document.getElementById('itemImage').value = '';
+        document.getElementById('itemQrCode').value = '';
+        document.getElementById('saveBtn').textContent = '➕ 添加物品';
+      }
+    
+      function addNewRoom() {
+        const newRoom = prompt('请输入新房间名称：');
+        if (newRoom && newRoom.trim() && !recentRooms.includes(newRoom.trim())) {
+          recentRooms.unshift(newRoom.trim());
+          saveData();
+        }
+      }
+    
+      function addNewContainer() {
+        const newContainer = prompt('请输入新容器名称：');
+        if (newContainer && newContainer.trim() && !recentContainers.includes(newContainer.trim())) {
+          recentContainers.unshift(newContainer.trim());
+          saveData();
+        }
+      }
+    
+      // ----------------------
+      // 导出/导入/清空
+      // ----------------------
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        if (items.length === 0) return alert('没有物品可导出');
+        const blob = new Blob([JSON.stringify({ items, recentRooms, recentContainers, recentShelves }, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `HomeItems_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          alert('✅ 导出成功！\n请保存到 iCloud Drive 以跨设备同步。');
+        }, 100);
+      });
+    
+      let importFile = document.createElement('input');
+      importFile.type = 'file';
+      importFile.accept = '.json';
+      importFile.style.display = 'none';
+      importFile.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (!data.items) throw new Error('格式错误：缺少 items 字段');
+            
+            if (!confirm(`将覆盖现有数据（共 ${data.items.length} 项），确定导入？`)) return;
+            
+            safeImportData(data);
+          } catch (err) {
+            alert('导入失败：' + (err.message || '文件格式不正确'));
+          }
+        };
+        reader.readAsText(file);
+        importFile.value = '';
+      });
+      document.body.appendChild(importFile);
+      document.getElementById('importBtn').addEventListener('click', () => importFile.click());
+    
+      document.getElementById('clearDataBtn').addEventListener('click', clearAllData);
+    
+      // ----------------------
+      // 统计 & Tab
+      // ----------------------
+      let roomChart, categoryChart, containerChart;
+    
+      function renderStats() {
+        const ctx1 = document.getElementById('roomChart').getContext('2d');
+        const ctx2 = document.getElementById('categoryChart').getContext('2d');
+        const ctx3 = document.getElementById('containerChart').getContext('2d');
+    
+        const roomCount = {};
+        items.forEach(i => { roomCount[i.room] = (roomCount[i.room] || 0) + 1; });
+        const roomLabels = Object.keys(roomCount);
+        const roomData = Object.values(roomCount);
+    
+        const catCount = {};
+        items.filter(i => i.category).forEach(i => { catCount[i.category] = (catCount[i.category] || 0) + 1; });
+        const catLabels = Object.keys(catCount);
+        const catData = Object.values(catCount);
+    
+        const contCount = {};
+        items.filter(i => i.container).forEach(i => { contCount[i.container] = (contCount[i.container] || 0) + 1; });
+        const sortedCont = Object.entries(contCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const contLabels = sortedCont.map(x => x[0]);
+        const contData = sortedCont.map(x => x[1]);
+    
+        if (roomChart) roomChart.destroy();
+        if (categoryChart) categoryChart.destroy();
+        if (containerChart) containerChart.destroy();
+    
+        roomChart = new Chart(ctx1, {
+          type: 'bar',
+          data: { labels: roomLabels, datasets: [{ label: '物品数量', data: roomData, backgroundColor: '#4A90E2' }] },
+          options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    
+        categoryChart = new Chart(ctx2, {
+          type: 'pie',
+          data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'] }] },
+          options: { responsive: true }
+        });
+    
+        containerChart = new Chart(ctx3, {
+          type: 'bar',
+          data: { labels: contLabels, datasets: [{ label: '物品数量', data: contData, backgroundColor: '#FF9F40' }] },
+          options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+      }
+    
+      function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        if (tab === 'manage') {
+          document.getElementById('managePanel').style.display = 'block';
+          document.getElementById('statsPanel').style.display = 'none';
+        } else {
+          document.getElementById('managePanel').style.display = 'none';
+          document.getElementById('statsPanel').style.display = 'block';
+          renderStats();
+        }
+      }
+    
+      // ----------------------
+      // 初始化
+      // ----------------------
+      function loadDataFromStorage() {
+        try {
+          const savedItems = localStorage.getItem('homeItems_v4');
+          if (savedItems) items = JSON.parse(savedItems);
+          const rooms = localStorage.getItem('recentRooms');
+          if (rooms) recentRooms = JSON.parse(rooms);
+          const containers = localStorage.getItem('recentContainers');
+          if (containers) recentContainers = JSON.parse(containers);
+          const shelves = localStorage.getItem('recentShelves');
+          if (shelves) recentShelves = JSON.parse(shelves);
+        } catch (e) {
+          console.warn('加载本地数据失败，使用默认值', e);
+        }
+      }
+    
+      loadDataFromStorage();
+      document.getElementById('searchInput').addEventListener('input', renderItems);
       renderFormOptions();
       renderItems();
       updateStorageWarning();
-      alert('✅ 所有数据已清空！');
-    }
-
-    // ======================
-    // 【✅ 修复版】安全导入
-    // ======================
-    function safeImportData(data) {
-      try {
-        items = [];
-        recentRooms = [];
-        recentContainers = [];
-        recentShelves = [];
-
-        if (data.items) items = data.items;
-        if (data.recentRooms) recentRooms = data.recentRooms;
-        if (data.recentContainers) recentContainers = data.recentContainers;
-        if (data.recentShelves) recentShelves = data.recentShelves;
-
-        if (!saveData()) {
-          throw new Error('数据过大，无法保存');
-        }
-
-        alert('✅ 安全导入成功！');
-      } catch (err) {
-        items = [];
-        recentRooms = [];
-        recentContainers = [];
-        recentShelves = [];
-        alert('❌ 导入失败：' + err.message);
-      }
-    }
-
-    // ======================
-    // 原有功能（略作调整）
-    // ======================
-    async function compressImage(file, maxWidth = 400, quality = 0.65) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.src = url;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          let { width, height } = img;
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-          canvas.width = width;
-          canvas.height = height;
-          ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob(blob => {
-            URL.revokeObjectURL(url);
-            if (!blob) return reject(new Error('Canvas toBlob 失败'));
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error('读取压缩图像失败'));
-            reader.readAsDataURL(blob);
-          }, 'image/jpeg', quality);
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(new Error('加载图像失败'));
-        };
+    
+      // 绑定 tab 切换（必须在 DOM 加载后）
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', (e) => switchTab(e.target.textContent.includes('管理') ? 'manage' : 'stats'));
       });
-    }
-
-    async function decodeQRFromFile(file) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.src = url;
-        img.onload = () => {
-          const MAX_DIMENSION = 1500;
-          let { width, height } = img;
-          if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-            const scale = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
-            width = Math.floor(width * scale);
-            height = Math.floor(height * scale);
-          }
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          canvas.width = width;
-          canvas.height = height;
-          ctx.drawImage(img, 0, 0, width, height);
-          const imageData = ctx.getImageData(0, 0, width, height);
-          URL.revokeObjectURL(url);
-          try {
-            const code = jsQR(imageData.data, width, height);
-            if (code) resolve(code.data.trim());
-            else reject(new Error('未检测到有效二维码，请确保图片清晰且仅含一个二维码'));
-          } catch (err) {
-            reject(new Error('二维码解析失败：' + (err.message || err)));
-          }
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(new Error('图片加载失败'));
-        };
-      });
-    }
-
-    function uuid() {
-      return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-      );
-    }
-
-    function getLocationPath(item) {
-      let path = item.room;
-      if (item.container) path += ` > ${item.container}`;
-      if (item.shelf_or_compartment) path += ` > ${item.shelf_or_compartment}`;
-      return path;
-    }
-
-    function renderFormOptions() {
-      const itemRoom = document.getElementById('itemRoom');
-      const itemContainer = document.getElementById('itemContainer');
-      const categoryList = document.getElementById('categoryList');
-      const shelfList = document.getElementById('shelfList');
-
-      itemRoom.innerHTML = '';
-      recentRooms.forEach(room => {
-        const opt = document.createElement('option');
-        opt.value = room;
-        opt.textContent = room;
-        itemRoom.appendChild(opt);
-      });
-
-      itemContainer.innerHTML = '<option value="">容器（如：衣柜、工具箱）</option>' +
-        recentContainers.map(c => `<option value="${c}">${c}</option>`).join('');
-
-      categoryList.innerHTML = '';
-      [...new Set(items.map(i => i.category).filter(Boolean))].forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        categoryList.appendChild(opt);
-      });
-
-      shelfList.innerHTML = '';
-      recentShelves.forEach(shelf => {
-        const opt = document.createElement('option');
-        opt.value = shelf;
-        shelfList.appendChild(opt);
-      });
-    }
-
-    function renderItems() {
-      const searchInput = document.getElementById('searchInput');
-      const itemsList = document.getElementById('itemsList');
-      const term = searchInput.value.trim().toLowerCase();
-      const filtered = items.filter(item =>
-        item.name.toLowerCase().includes(term) ||
-        getLocationPath(item).toLowerCase().includes(term) ||
-        (item.specific_location && item.specific_location.toLowerCase().includes(term)) ||
-        (item.qr_code && item.qr_code.toLowerCase().includes(term))
-      );
-
-      itemsList.innerHTML = filtered.length === 0
-        ? '<p style="text-align:center;color:#888;">暂无物品</p>'
-        : filtered.map(item => {
-            let qrDisplay = '';
-            if (item.qr_code) {
-              const isUrl = /^https?:\/\//.test(item.qr_code);
-              qrDisplay = `
-                <div class="qr-content">
-                  <strong>🔗 二维码内容：</strong>
-                  ${isUrl 
-                    ? `<a href="${item.qr_code}" target="_blank" rel="noopener">${item.qr_code}</a>`
-                    : `<span>${item.qr_code}</span>`
-                  }
-                </div>
-              `;
-            }
-
-            return `
-              <div class="item">
-                <strong>${item.name}</strong>
-                ${item.category ? `<br><small>📂 ${item.category}</small>` : ''}
-                <div class="location-path">${getLocationPath(item)}</div>
-                ${item.specific_location ? `<div>${item.specific_location}</div>` : ''}
-                ${item.image ? `<img src="${item.image}" alt="${item.name}" style="max-height:100px;">` : ''}
-                ${qrDisplay}
-                <div style="margin-top:10px;">
-                  <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="editItem('${item.id}')">✏️ 编辑</button>
-                  <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="deleteItem('${item.id}')">🗑️ 删除</button>
-                </div>
-              </div>
-            `;
-          }).join('');
-
-      document.getElementById('totalItems').textContent = items.length;
-    }
-
-    function editItem(id) {
-      const item = items.find(i => i.id === id);
-      if (!item) return;
-      document.getElementById('editId').value = item.id;
-      document.getElementById('itemName').value = item.name;
-      document.getElementById('itemCategory').value = item.category || '';
-      document.getElementById('itemRoom').value = item.room;
-      document.getElementById('itemContainer').value = item.container || '';
-      document.getElementById('itemShelf').value = item.shelf_or_compartment || '';
-      document.getElementById('itemLocation').value = item.specific_location || '';
-      document.getElementById('saveBtn').textContent = '💾 保存修改';
-      window.scrollTo(0, 0);
-    }
-
-    function deleteItem(id) {
-      if (confirm('确定删除此物品？')) {
-        items = items.filter(item => item.id !== id);
-        saveData();
-      }
-    }
-
-    // ======================
-    // 事件绑定
-    // ======================
-    document.getElementById('saveBtn').addEventListener('click', async () => {
-      const itemName = document.getElementById('itemName');
-      const itemRoom = document.getElementById('itemRoom');
-      const name = itemName.value.trim();
-      const room = itemRoom.value.trim();
-      if (!name || !room) {
-        alert('请填写物品名称和房间');
-        return;
-      }
-
-      // ✅ 仅限制二维码原始大小（因需解析），不限制物品照片原始大小
-      const MAX_QR_SIZE = 5 * 1024 * 1024;
-      const itemQrCode = document.getElementById('itemQrCode');
-      if (itemQrCode.files[0] && itemQrCode.files[0].size > MAX_QR_SIZE) {
-        alert('🏷️ 二维码图片过大（超过 5MB）\n\n💡 建议：\n• 截图只包含二维码区域\n• 用微信/QQ转发后保存（自动压缩）\n• 使用系统相册编辑裁剪');
-        return;
-      }
-
-      const originalText = document.getElementById('saveBtn').textContent;
-      document.getElementById('saveBtn').disabled = true;
-      document.getElementById('saveBtn').textContent = '⏳ 保存中...';
-
-      try {
-        let imageBase64 = '';
-        let qrContent = '';
-
-        const itemImage = document.getElementById('itemImage');
-        if (itemImage.files[0]) {
-          imageBase64 = await compressImage(itemImage.files[0]); // 自动压缩，无需提前限大小
-        }
-        if (itemQrCode.files[0]) {
-          qrContent = await decodeQRFromFile(itemQrCode.files[0]);
-        }
-
-        const newItem = {
-          id: document.getElementById('editId').value || uuid(),
-          name,
-          category: document.getElementById('itemCategory').value.trim() || null,
-          room,
-          container: document.getElementById('itemContainer').value.trim() || null,
-          shelf_or_compartment: document.getElementById('itemShelf').value.trim() || null,
-          specific_location: document.getElementById('itemLocation').value.trim() || null,
-          image: imageBase64,
-          qr_code: qrContent,
-          created_at: document.getElementById('editId').value 
-            ? items.find(i => i.id === document.getElementById('editId').value)?.created_at 
-            : new Date().toISOString()
-        };
-
-        if (document.getElementById('editId').value) {
-          items = items.map(i => i.id === document.getElementById('editId').value ? newItem : i);
-        } else {
-          if (!recentRooms.includes(newItem.room)) recentRooms.unshift(newItem.room);
-          if (newItem.container && !recentContainers.includes(newItem.container)) recentContainers.unshift(newItem.container);
-          if (newItem.shelf_or_compartment && !recentShelves.includes(newItem.shelf_or_compartment)) recentShelves.unshift(newItem.shelf_or_compartment);
-          recentRooms = recentRooms.slice(0, 20);
-          recentContainers = recentContainers.slice(0, 20);
-          recentShelves = recentShelves.slice(0, 20);
-          items.push(newItem);
-        }
-
-        resetForm();
-        if (!saveData()) {
-          if (!document.getElementById('editId').value) items.pop();
-          throw new Error('数据过大，无法保存');
-        }
-        alert(document.getElementById('editId').value ? '✅ 修改成功！' : '✅ 添加成功！');
-      } catch (err) {
-        console.error(err);
-        alert('❌ 保存失败：' + (err.message || '未知错误，请重试'));
-      } finally {
-        document.getElementById('saveBtn').disabled = false;
-        document.getElementById('saveBtn').textContent = originalText;
+    
+      // PWA 注册
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
       }
     });
-
-    function resetForm() {
-      document.getElementById('editId').value = '';
-      document.getElementById('itemName').value = '';
-      document.getElementById('itemCategory').value = '';
-      document.getElementById('itemShelf').value = '';
-      document.getElementById('itemLocation').value = '';
-      document.getElementById('itemImage').value = '';
-      document.getElementById('itemQrCode').value = '';
-      document.getElementById('saveBtn').textContent = '➕ 添加物品';
-    }
-
-    function addNewRoom() {
-      const newRoom = prompt('请输入新房间名称：');
-      if (newRoom && newRoom.trim() && !recentRooms.includes(newRoom.trim())) {
-        recentRooms.unshift(newRoom.trim());
-        saveData();
-      }
-    }
-
-    function addNewContainer() {
-      const newContainer = prompt('请输入新容器名称：');
-      if (newContainer && newContainer.trim() && !recentContainers.includes(newContainer.trim())) {
-        recentContainers.unshift(newContainer.trim());
-        saveData();
-      }
-    }
-
-    // ✅ 绑定照片上传区域点击
-    document.getElementById('photoUploadArea').addEventListener('click', () => {
-      document.getElementById('itemImage').click();
-    });
-
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      if (items.length === 0) return alert('没有物品可导出');
-      const blob = new Blob([JSON.stringify({ items, recentRooms, recentContainers, recentShelves }, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `HomeItems_${new Date().toISOString().slice(0,10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        alert('✅ 导出成功！\n请保存到 iCloud Drive 以跨设备同步。');
-      }, 100);
-    });
-
-    // 导入逻辑（不变）
-    let importFile = document.createElement('input');
-    importFile.type = 'file';
-    importFile.accept = '.json';
-    importFile.style.display = 'none';
-    importFile.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        try {
-          const data = JSON.parse(ev.target.result);
-          if (!data.items) throw new Error('格式错误：缺少 items 字段');
-          
-          if (!confirm(`将覆盖现有数据（共 ${data.items.length} 项），确定导入？`)) return;
-          
-          safeImportData(data);
-        } catch (err) {
-          alert('导入失败：' + (err.message || '文件格式不正确'));
-        }
-      };
-      reader.readAsText(file);
-      importFile.value = '';
-    });
-    document.body.appendChild(importFile);
-    document.getElementById('importBtn').addEventListener('click', () => importFile.click());
-
-    document.getElementById('clearDataBtn').addEventListener('click', clearAllData);
-
-    // ======================
-    // 统计 & Tab
-    // ======================
-    let roomChart, categoryChart, containerChart;
-
-    function renderStats() {
-      const ctx1 = document.getElementById('roomChart').getContext('2d');
-      const ctx2 = document.getElementById('categoryChart').getContext('2d');
-      const ctx3 = document.getElementById('containerChart').getContext('2d');
-
-      const roomCount = {};
-      items.forEach(i => { roomCount[i.room] = (roomCount[i.room] || 0) + 1; });
-      const roomLabels = Object.keys(roomCount);
-      const roomData = Object.values(roomCount);
-
-      const catCount = {};
-      items.filter(i => i.category).forEach(i => { catCount[i.category] = (catCount[i.category] || 0) + 1; });
-      const catLabels = Object.keys(catCount);
-      const catData = Object.values(catCount);
-
-      const contCount = {};
-      items.filter(i => i.container).forEach(i => { contCount[i.container] = (contCount[i.container] || 0) + 1; });
-      const sortedCont = Object.entries(contCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
-      const contLabels = sortedCont.map(x => x[0]);
-      const contData = sortedCont.map(x => x[1]);
-
-      if (roomChart) roomChart.destroy();
-      if (categoryChart) categoryChart.destroy();
-      if (containerChart) containerChart.destroy();
-
-      roomChart = new Chart(ctx1, {
-        type: 'bar',
-        data: { labels: roomLabels, datasets: [{ label: '物品数量', data: roomData, backgroundColor: '#4A90E2' }] },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-      });
-
-      categoryChart = new Chart(ctx2, {
-        type: 'pie',
-        data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'] }] },
-        options: { responsive: true }
-      });
-
-      containerChart = new Chart(ctx3, {
-        type: 'bar',
-        data: { labels: contLabels, datasets: [{ label: '物品数量', data: contData, backgroundColor: '#FF9F40' }] },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-      });
-    }
-
-    function switchTab(tab) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      event.target.classList.add('active');
-      if (tab === 'manage') {
-        document.getElementById('managePanel').style.display = 'block';
-        document.getElementById('statsPanel').style.display = 'none';
-      } else {
-        document.getElementById('managePanel').style.display = 'none';
-        document.getElementById('statsPanel').style.display = 'block';
-        renderStats();
-      }
-    }
-
-    // ======================
-    // 初始化
-    // ======================
-    loadDataFromStorage();
-    document.getElementById('searchInput').addEventListener('input', renderItems);
-    renderFormOptions();
-    renderItems();
-    updateStorageWarning();
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-  </script>
+    </script>
 </body>
 </html>
