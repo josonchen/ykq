@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#4A90E2" />
   <title>🏠 家用物品管家</title>
   <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -63,23 +64,21 @@
       margin: 6px 0;
     }
     .item img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }
-    #scannerContainer {
-      display: none;
-      position: relative;
-      height: 300px;
-      background: #000;
-      border-radius: 12px;
+    .tabs {
+      display: flex;
       margin: 16px 0;
-      overflow: hidden;
+      gap: 8px;
     }
-    #barcodeScanner { width: 100%; height: 100%; object-fit: cover; }
-    .scan-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      border: 2px solid #28a745;
-      box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.5);
-      pointer-events: none;
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      background: #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
     }
+    .tab.active { background: #4A90E2; color: white; }
+    canvas { max-width: 100%; margin: 20px 0; }
     footer { text-align: center; padding: 16px; color: #888; font-size: 14px; }
   </style>
 </head>
@@ -89,50 +88,63 @@
   </header>
 
   <div class="container">
-    <!-- 搜索与筛选 -->
-    <input type="text" id="searchInput" placeholder="🔍 搜索物品名称或位置..." />
-
-    <!-- 快速录入表单 -->
-    <input type="text" id="itemName" placeholder="物品名称（必填）" />
-    <input type="text" id="itemCategory" placeholder="分类（如：厨房电器）" list="categoryList" />
-
-    <div style="display:flex;align-items:center;">
-      <select id="itemRoom" style="flex:1;"></select>
-      <button type="button" class="mini" onclick="addNewRoom()">+ 新建</button>
+    <!-- Tab 切换 -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('manage')">管理</div>
+      <div class="tab" onclick="switchTab('stats')">📊 统计</div>
     </div>
 
-    <div style="display:flex;align-items:center;">
-      <select id="itemContainer" style="flex:1;">
-        <option value="">容器（如：衣柜、工具箱）</option>
-      </select>
-      <button type="button" class="mini" onclick="addNewContainer()">+ 新建</button>
+    <!-- 管理面板 -->
+    <div id="managePanel">
+      <input type="text" id="searchInput" placeholder="🔍 搜索物品名称或位置..." />
+
+      <!-- 表单 -->
+      <div id="itemForm">
+        <input type="hidden" id="editId" />
+        <input type="text" id="itemName" placeholder="物品名称（必填）" />
+        <input type="text" id="itemCategory" placeholder="分类（如：厨房电器）" list="categoryList" />
+
+        <div style="display:flex;align-items:center;">
+          <select id="itemRoom" style="flex:1;"></select>
+          <button type="button" class="mini" onclick="addNewRoom()">+ 新建</button>
+        </div>
+
+        <div style="display:flex;align-items:center;">
+          <select id="itemContainer" style="flex:1;">
+            <option value="">容器（如：衣柜、工具箱）</option>
+          </select>
+          <button type="button" class="mini" onclick="addNewContainer()">+ 新建</button>
+        </div>
+
+        <input type="text" id="itemShelf" placeholder="层/格（如：上层、第二格）" list="shelfList" />
+        <textarea id="itemLocation" placeholder="具体位置描述（如：左上角抽屉内）"></textarea>
+
+        <input type="file" id="itemImage" accept="image/*" capture="environment" />
+        <input type="file" id="itemQrCode" accept="image/*" placeholder="可选：上传二维码标签" />
+
+        <button id="saveBtn">➕ 添加物品</button>
+      </div>
+
+      <!-- 功能按钮 -->
+      <div style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+        <button id="exportBtn" class="secondary">📤 导出到 iCloud</button>
+        <button id="importBtn" class="secondary">📥 从 iCloud 导入</button>
+      </div>
+
+      <!-- 物品列表 -->
+      <div id="itemsList"></div>
     </div>
 
-    <input type="text" id="itemShelf" placeholder="层/格（如：上层、第二格）" list="shelfList" />
-    <textarea id="itemLocation" placeholder="具体位置描述（如：左上角抽屉内）"></textarea>
-
-    <input type="file" id="itemImage" accept="image/*" capture="environment" />
-    <input type="file" id="itemQrCode" accept="image/*" placeholder="可选：上传二维码标签" />
-
-    <button id="addItem">➕ 添加物品</button>
-
-    <!-- 功能按钮 -->
-    <div style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
-      <button id="exportBtn" class="secondary">📤 导出到 iCloud</button>
-      <button id="importBtn" class="secondary">📥 从 iCloud 导入</button>
-      <button id="scanBtn" class="secondary" style="display:none;">📷 扫描条码</button>
+    <!-- 统计面板 -->
+    <div id="statsPanel" style="display:none;">
+      <h3>📦 物品总数：<span id="totalItems">0</span></h3>
+      <h4>按房间分布</h4>
+      <canvas id="roomChart"></canvas>
+      <h4>按分类分布</h4>
+      <canvas id="categoryChart"></canvas>
+      <h4>按容器分布（Top 5）</h4>
+      <canvas id="containerChart"></canvas>
     </div>
-
-    <!-- 扫码区域 -->
-    <div id="scannerContainer">
-      <video id="barcodeScanner" autoplay playsinline></video>
-      <div class="scan-overlay"></div>
-    </div>
-
-    <hr style="margin:20px 0;border:none;border-top:1px solid #eee;" />
-
-    <!-- 物品列表 -->
-    <div id="itemsList"></div>
   </div>
 
   <!-- datalist for suggestions -->
@@ -143,12 +155,11 @@
     数据保存在本机 · 导出 JSON 到 iCloud Drive 可跨设备同步
   </footer>
 
-  <script src="https://unpkg.com/@zxing/library@0.18.6/umd/zxing-browser.min.js"></script>
   <script>
     // ======================
-    // 数据存储结构
+    // 数据模型
     // ======================
-    let items = JSON.parse(localStorage.getItem('homeItems_v2') || '[]');
+    let items = JSON.parse(localStorage.getItem('homeItems_v3') || '[]');
     let recentRooms = JSON.parse(localStorage.getItem('recentRooms') || '["主卧","次卧","厨房","客厅","卫生间","阳台","车库"]');
     let recentContainers = JSON.parse(localStorage.getItem('recentContainers') || '["衣柜","抽屉","工具箱","书架","冰箱"]');
     let recentShelves = JSON.parse(localStorage.getItem('recentShelves') || '["上层","中层","下层","第一格","第二格"]');
@@ -156,6 +167,8 @@
     // ======================
     // DOM 元素
     // ======================
+    const managePanel = document.getElementById('managePanel');
+    const statsPanel = document.getElementById('statsPanel');
     const itemsList = document.getElementById('itemsList');
     const searchInput = document.getElementById('searchInput');
     const itemName = document.getElementById('itemName');
@@ -166,14 +179,11 @@
     const itemLocation = document.getElementById('itemLocation');
     const itemImage = document.getElementById('itemImage');
     const itemQrCode = document.getElementById('itemQrCode');
-    const addItemBtn = document.getElementById('addItem');
+    const saveBtn = document.getElementById('saveBtn');
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
-    const scanBtn = document.getElementById('scanBtn');
-    const scannerContainer = document.getElementById('scannerContainer');
-    const video = document.getElementById('barcodeScanner');
-    const categoryList = document.getElementById('categoryList');
-    const shelfList = document.getElementById('shelfList');
+    const editId = document.getElementById('editId');
+    const totalItemsEl = document.getElementById('totalItems');
 
     // ======================
     // 工具函数
@@ -184,15 +194,6 @@
       );
     }
 
-    function saveData() {
-      localStorage.setItem('homeItems_v2', JSON.stringify(items));
-      localStorage.setItem('recentRooms', JSON.stringify(recentRooms));
-      localStorage.setItem('recentContainers', JSON.stringify(recentContainers));
-      localStorage.setItem('recentShelves', JSON.stringify(recentShelves));
-      renderFormOptions();
-      renderItems();
-    }
-
     function getLocationPath(item) {
       let path = item.room;
       if (item.container) path += ` > ${item.container}`;
@@ -200,11 +201,20 @@
       return path;
     }
 
+    function saveData() {
+      localStorage.setItem('homeItems_v3', JSON.stringify(items));
+      localStorage.setItem('recentRooms', JSON.stringify(recentRooms));
+      localStorage.setItem('recentContainers', JSON.stringify(recentContainers));
+      localStorage.setItem('recentShelves', JSON.stringify(recentShelves));
+      renderFormOptions();
+      renderItems();
+      renderStats();
+    }
+
     // ======================
     // 渲染表单选项
     // ======================
     function renderFormOptions() {
-      // 房间下拉
       itemRoom.innerHTML = '';
       recentRooms.forEach(room => {
         const opt = document.createElement('option');
@@ -213,11 +223,10 @@
         itemRoom.appendChild(opt);
       });
 
-      // 容器下拉
       const containerOpts = recentContainers.map(c => `<option value="${c}">${c}</option>`).join('');
       itemContainer.innerHTML = `<option value="">容器（如：衣柜、工具箱）</option>${containerOpts}`;
 
-      // datalist
+      const categoryList = document.getElementById('categoryList');
       categoryList.innerHTML = '';
       const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
       categories.forEach(cat => {
@@ -226,6 +235,7 @@
         categoryList.appendChild(opt);
       });
 
+      const shelfList = document.getElementById('shelfList');
       shelfList.innerHTML = '';
       recentShelves.forEach(shelf => {
         const opt = document.createElement('option');
@@ -253,23 +263,48 @@
             ${item.category ? `<br><small>📂 ${item.category}</small>` : ''}
             <div class="location-path">${getLocationPath(item)}</div>
             ${item.specific_location ? `<div>${item.specific_location}</div>` : ''}
-            ${item.image ? `<img src="${item.image}" alt="${item.name}">` : ''}
-            ${item.qr_code ? `<img src="${item.qr_code}" alt="QR" style="width:80px;height:80px;margin-top:8px;">` : ''}
-            <button class="secondary" style="margin-top:10px;" onclick="deleteItem('${item.id}')">🗑️ 删除</button>
+            ${item.image ? `<img src="${item.image}" alt="${item.name}" style="max-height:100px;">` : ''}
+            ${item.qr_code ? `<img src="${item.qr_code}" alt="QR" style="width:60px;height:60px;margin-top:8px;">` : ''}
+            <div style="margin-top:10px;">
+              <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="editItem('${item.id}')">✏️ 编辑</button>
+              <button class="secondary" style="padding:6px 10px;font-size:14px;" onclick="deleteItem('${item.id}')">🗑️ 删除</button>
+            </div>
           </div>
         `).join('');
 
-      // 自动选中上次使用的房间（提升体验）
-      if (items.length > 0) {
-        const lastRoom = items[items.length - 1].room;
-        itemRoom.value = lastRoom;
+      totalItemsEl.textContent = items.length;
+    }
+
+    // ======================
+    // 编辑 & 删除
+    // ======================
+    function editItem(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      editId.value = item.id;
+      itemName.value = item.name;
+      itemCategory.value = item.category || '';
+      itemRoom.value = item.room;
+      itemContainer.value = item.container || '';
+      itemShelf.value = item.shelf_or_compartment || '';
+      itemLocation.value = item.specific_location || '';
+
+      saveBtn.textContent = '💾 保存修改';
+      window.scrollTo(0, 0);
+    }
+
+    function deleteItem(id) {
+      if (confirm('确定删除此物品？')) {
+        items = items.filter(item => item.id !== id);
+        saveData();
       }
     }
 
     // ======================
-    // 事件处理
+    // 保存（新增或更新）
     // ======================
-    addItemBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', () => {
       const name = itemName.value.trim();
       const room = itemRoom.value.trim();
       if (!name || !room) {
@@ -277,26 +312,15 @@
         return;
       }
 
-      // 收集数据
-      const newItem = {
-        id: uuid(),
-        name,
-        category: itemCategory.value.trim(),
-        room,
-        container: itemContainer.value.trim() || null,
-        shelf_or_compartment: itemShelf.value.trim() || null,
-        specific_location: itemLocation.value.trim() || null,
-        image: '',
-        qr_code: ''
-      };
-
-      // 处理图片
       const promises = [];
+      let imageBase64 = '';
+      let qrBase64 = '';
+
       if (itemImage.files[0]) {
         promises.push(new Promise(resolve => {
           const reader = new FileReader();
           reader.onload = e => {
-            newItem.image = e.target.result;
+            imageBase64 = e.target.result;
             resolve();
           };
           reader.readAsDataURL(itemImage.files[0]);
@@ -306,7 +330,7 @@
         promises.push(new Promise(resolve => {
           const reader = new FileReader();
           reader.onload = e => {
-            newItem.qr_code = e.target.result;
+            qrBase64 = e.target.result;
             resolve();
           };
           reader.readAsDataURL(itemQrCode.files[0]);
@@ -314,29 +338,52 @@
       }
 
       Promise.all(promises).then(() => {
-        // 更新最近使用列表
-        if (!recentRooms.includes(newItem.room)) recentRooms.unshift(newItem.room);
-        if (newItem.container && !recentContainers.includes(newItem.container)) recentContainers.unshift(newItem.container);
-        if (newItem.shelf_or_compartment && !recentShelves.includes(newItem.shelf_or_compartment)) recentShelves.unshift(newItem.shelf_or_compartment);
+        const newItem = {
+          id: editId.value || uuid(),
+          name,
+          category: itemCategory.value.trim() || null,
+          room,
+          container: itemContainer.value.trim() || null,
+          shelf_or_compartment: itemShelf.value.trim() || null,
+          specific_location: itemLocation.value.trim() || null,
+          image: imageBase64,
+          qr_code: qrBase64,
+          created_at: editId.value ? items.find(i => i.id === editId.value)?.created_at : new Date().toISOString()
+        };
 
-        // 限制长度
-        recentRooms = recentRooms.slice(0, 20);
-        recentContainers = recentContainers.slice(0, 20);
-        recentShelves = recentShelves.slice(0, 20);
+        if (editId.value) {
+          // Update
+          items = items.map(i => i.id === editId.value ? newItem : i);
+        } else {
+          // Add
+          if (!recentRooms.includes(newItem.room)) recentRooms.unshift(newItem.room);
+          if (newItem.container && !recentContainers.includes(newItem.container)) recentContainers.unshift(newItem.container);
+          if (newItem.shelf_or_compartment && !recentShelves.includes(newItem.shelf_or_compartment)) recentShelves.unshift(newItem.shelf_or_compartment);
+          recentRooms = recentRooms.slice(0, 20);
+          recentContainers = recentContainers.slice(0, 20);
+          recentShelves = recentShelves.slice(0, 20);
+          items.push(newItem);
+        }
 
-        items.push(newItem);
-        saveData();
         resetForm();
+        saveData();
       });
     });
 
-    function deleteItem(id) {
-      if (confirm('确定删除？')) {
-        items = items.filter(item => item.id !== id);
-        saveData();
-      }
+    function resetForm() {
+      editId.value = '';
+      itemName.value = '';
+      itemCategory.value = '';
+      itemShelf.value = '';
+      itemLocation.value = '';
+      itemImage.value = '';
+      itemQrCode.value = '';
+      saveBtn.textContent = '➕ 添加物品';
     }
 
+    // ======================
+    // 快速输入
+    // ======================
     function addNewRoom() {
       const newRoom = prompt('请输入新房间名称：');
       if (newRoom && newRoom.trim() && !recentRooms.includes(newRoom.trim())) {
@@ -353,7 +400,9 @@
       }
     }
 
-    // 导出
+    // ======================
+    // 导入导出
+    // ======================
     exportBtn.addEventListener('click', () => {
       if (items.length === 0) return alert('没有物品可导出');
       const blob = new Blob([JSON.stringify({ items, recentRooms, recentContainers, recentShelves }, null, 2)], { type: 'application/json' });
@@ -370,7 +419,6 @@
       }, 100);
     });
 
-    // 导入
     let importFile = document.createElement('input');
     importFile.type = 'file';
     importFile.accept = '.json';
@@ -401,54 +449,96 @@
     document.body.appendChild(importFile);
     importBtn.addEventListener('click', () => importFile.click());
 
-    // 条码扫描
-    async function initScanner() {
-      if (location.protocol !== 'https:') return;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = stream;
-        scanBtn.style.display = 'block';
-      } catch (e) {}
-    }
-    initScanner();
+    // ======================
+    // 统计分析
+    // ======================
+    let roomChart, categoryChart, containerChart;
 
-    let codeReader = null;
-    scanBtn.addEventListener('click', () => {
-      if (scannerContainer.style.display === 'block') {
-        if (codeReader) codeReader.reset();
-        scannerContainer.style.display = 'none';
-        scanBtn.textContent = '📷 扫描条码';
-        return;
-      }
-      scannerContainer.style.display = 'block';
-      scanBtn.textContent = '⏹ 停止扫描';
-      codeReader = new ZXing.BrowserMultiFormatReader();
-      codeReader.decodeFromVideoDevice(undefined, 'barcodeScanner', (result, err) => {
-        if (result) {
-          itemName.value = result.getText();
-          if (codeReader) codeReader.reset();
-          scannerContainer.style.display = 'none';
-          scanBtn.textContent = '📷 扫描条码';
-        }
+    function renderStats() {
+      const ctx1 = document.getElementById('roomChart').getContext('2d');
+      const ctx2 = document.getElementById('categoryChart').getContext('2d');
+      const ctx3 = document.getElementById('containerChart').getContext('2d');
+
+      // 按房间统计
+      const roomCount = {};
+      items.forEach(i => {
+        roomCount[i.room] = (roomCount[i.room] || 0) + 1;
       });
-    });
+      const roomLabels = Object.keys(roomCount);
+      const roomData = Object.values(roomCount);
 
-    // 搜索实时过滤
-    searchInput.addEventListener('input', renderItems);
+      // 按分类统计
+      const catCount = {};
+      items.filter(i => i.category).forEach(i => {
+        catCount[i.category] = (catCount[i.category] || 0) + 1;
+      });
+      const catLabels = Object.keys(catCount);
+      const catData = Object.values(catCount);
 
+      // 按容器统计（Top 5）
+      const contCount = {};
+      items.filter(i => i.container).forEach(i => {
+        contCount[i.container] = (contCount[i.container] || 0) + 1;
+      });
+      const sortedCont = Object.entries(contCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const contLabels = sortedCont.map(x => x[0]);
+      const contData = sortedCont.map(x => x[1]);
+
+      // Destroy old charts
+      if (roomChart) roomChart.destroy();
+      if (categoryChart) categoryChart.destroy();
+      if (containerChart) containerChart.destroy();
+
+      roomChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: roomLabels,
+          datasets: [{ label: '物品数量', data: roomData, backgroundColor: '#4A90E2' }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+
+      categoryChart = new Chart(ctx2, {
+        type: 'pie',
+        data: {
+          labels: catLabels,
+          datasets: [{ data: catData, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'] }]
+        },
+        options: { responsive: true }
+      });
+
+      containerChart = new Chart(ctx3, {
+        type: 'bar',
+        data: {
+          labels: contLabels,
+          datasets: [{ label: '物品数量', data: contData, backgroundColor: '#FF9F40' }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+    }
+
+    // ======================
+    // Tab 切换
+    // ======================
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      if (tab === 'manage') {
+        managePanel.style.display = 'block';
+        statsPanel.style.display = 'none';
+      } else {
+        managePanel.style.display = 'none';
+        statsPanel.style.display = 'block';
+        renderStats();
+      }
+    }
+
+    // ======================
     // 初始化
+    // ======================
+    searchInput.addEventListener('input', renderItems);
     renderFormOptions();
     renderItems();
-
-    function resetForm() {
-      itemName.value = '';
-      itemCategory.value = '';
-      itemShelf.value = '';
-      itemLocation.value = '';
-      itemImage.value = '';
-      itemQrCode.value = '';
-      itemName.focus();
-    }
 
     // PWA
     if ('serviceWorker' in navigator) {

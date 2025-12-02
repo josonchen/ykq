@@ -1,5 +1,5 @@
 // 简单 SW，支持离线加载 index.html
-const CACHE_NAME = 'home-items-v1';
+const CACHE_NAME = 'home-items-v3';
 const urlsToCache = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -12,6 +12,6 @@ self.addEventListener('install', (event) => {
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
-      .then(response => response || fetch(event.request))
+      .then((response) => response || fetch(event.request))
   );
 });
