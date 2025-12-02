@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🏠 物品管理一口清</title>
+  <title>🏠 家庭物品管理系统</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { padding: 16px; background: #f9f9f9; color: #333; line-height: 1.6; }
@@ -33,7 +33,6 @@
     .qr-content { margin-top: 8px; padding: 8px; background: #f0f8ff; border-left: 3px solid #4A90E2; }
     #storageWarning { background: #fff8e1; padding: 10px; border-radius: 6px; margin: 10px 0; display: none; color: #e65100; }
 
-    /* Modal */
     #customModal {
       display: none;
       position: fixed;
@@ -79,7 +78,7 @@
 </head>
 <body>
 
-<h1>🏠 家庭物品管理一口清</h1>
+<h1>🏠 家庭物品管理系统</h1>
 
 <div class="tab-bar">
   <div class="tab active" data-tab="manage">📦 物品管理</div>
@@ -128,7 +127,6 @@
   <label for="itemImage" id="photoUploadArea">
     📸 点击选择照片或拍照
   </label>
-  <!-- ✅ 修复：添加 capture 属性以支持直接拍照 -->
   <input type="file" id="itemImage" accept="image/*" capture="environment" style="display:none;" />
 
   <label for="itemQrCode" style="display:block; text-align:center; padding:12px; background:#f0f8ff; border:1px dashed #4A90E2; border-radius:6px; margin:10px 0; cursor:pointer;">
@@ -181,7 +179,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
 <script>
-// 全局变量
+// === 全局变量 ===
 let items = [];
 let recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库"];
 let recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱"];
@@ -192,7 +190,10 @@ let roomChartInstance = null;
 let categoryChartInstance = null;
 let containerChartInstance = null;
 
-// 工具函数
+// ✅ 新增：暂存用户刚上传的图片（Base64）
+let pendingItemImageBase64 = '';
+
+// === 工具函数 ===
 function isDataTooLarge(dataToSave, maxSizeBytes = 4_700_000) {
   try {
     const jsonString = JSON.stringify(dataToSave);
@@ -252,17 +253,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // === 加载数据（兼容旧版本）===
   function loadDataFromStorage() {
     try {
-      // 尝试加载最新版
       const savedItems = localStorage.getItem('homeItems_v5');
       if (savedItems) {
         const data = JSON.parse(savedItems);
-        items = Array.isArray(data) ? data : []; // 防御性处理
+        items = Array.isArray(data) ? data : [];
       } else {
-        // 兼容旧版（如有）
         const oldItems = localStorage.getItem('homeItems');
         if (oldItems) {
           items = JSON.parse(oldItems) || [];
-          // 迁移后保存为新格式
           localStorage.setItem('homeItems_v5', JSON.stringify(items));
         }
       }
@@ -318,23 +316,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // ✅ 修复：图表渲染加延迟 + 强制销毁
+  // === 图表渲染（彻底修复）===
   function renderCharts() {
-    // 销毁旧图表
-    if (roomChartInstance) roomChartInstance.destroy();
-    if (categoryChartInstance) categoryChartInstance.destroy();
-    if (containerChartInstance) containerChartInstance.destroy();
+    [roomChartInstance, categoryChartInstance, containerChartInstance].forEach(chart => {
+      if (chart) chart.destroy();
+    });
 
-    // 延迟确保 Canvas 可见且尺寸正确
-    setTimeout(() => {
-      // === 房间统计 ===
+    requestAnimationFrame(() => {
+      // 房间
       const roomMap = {};
       items.forEach(item => {
         roomMap[item.room] = (roomMap[item.room] || 0) + (item.quantity || 1);
       });
       const roomLabels = Object.keys(roomMap);
       const roomData = Object.values(roomMap);
-
       const roomCtx = document.getElementById('roomChart').getContext('2d');
       roomChartInstance = new Chart(roomCtx, {
         type: 'pie',
@@ -342,23 +337,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           labels: roomLabels,
           datasets: [{
             data: roomData,
-            backgroundColor: [
-              '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-              '#FF9F40', '#C9CBCF', '#FF6B6B', '#4ECDC4', '#FFE66D'
-            ].slice(0, roomLabels.length)
+            backgroundColor: ['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF','#FF9F40','#C9CBCF'].slice(0, roomLabels.length)
           }]
         },
         options: { responsive: true, maintainAspectRatio: false }
       });
 
-      // === 分类统计 ===
+      // 分类
       const categoryMap = {};
       items.filter(i => i.category).forEach(item => {
         categoryMap[item.category] = (categoryMap[item.category] || 0) + (item.quantity || 1);
       });
       const categoryLabels = Object.keys(categoryMap);
       const categoryData = Object.values(categoryMap);
-
       const categoryCtx = document.getElementById('categoryChart').getContext('2d');
       if (categoryLabels.length > 0) {
         categoryChartInstance = new Chart(categoryCtx, {
@@ -367,10 +358,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             labels: categoryLabels,
             datasets: [{
               data: categoryData,
-              backgroundColor: [
-                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                '#FF9F40', '#C9CBCF', '#FF6B6B', '#4ECDC4', '#FFE66D'
-              ].slice(0, categoryLabels.length)
+              backgroundColor: ['#FF6384','#36A2EB','#FFCE56','#4BC0C0','#9966FF'].slice(0, categoryLabels.length)
             }]
           },
           options: { responsive: true, maintainAspectRatio: false }
@@ -378,17 +366,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         categoryCtx.clearRect(0, 0, categoryCtx.canvas.width, categoryCtx.canvas.height);
         categoryCtx.font = '16px sans-serif';
-        categoryCtx.fillText('暂无分类数据', 100, 100);
+        categoryCtx.fillText('暂无分类数据', categoryCtx.canvas.width / 2 - 60, categoryCtx.canvas.height / 2);
       }
 
-      // === 容器统计 ===
+      // 容器
       const containerMap = {};
       items.filter(i => i.container).forEach(item => {
         containerMap[item.container] = (containerMap[item.container] || 0) + (item.quantity || 1);
       });
       const containerLabels = Object.keys(containerMap);
       const containerData = Object.values(containerMap);
-
       const containerCtx = document.getElementById('containerChart').getContext('2d');
       if (containerLabels.length > 0) {
         containerChartInstance = new Chart(containerCtx, {
@@ -404,17 +391,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-              y: { beginAtZero: true, ticks: { precision: 0 } }
-            }
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
           }
         });
       } else {
         containerCtx.clearRect(0, 0, containerCtx.canvas.width, containerCtx.canvas.height);
         containerCtx.font = '16px sans-serif';
-        containerCtx.fillText('暂无容器数据', 100, 100);
+        containerCtx.fillText('暂无容器数据', containerCtx.canvas.width / 2 - 60, containerCtx.canvas.height / 2);
       }
-    }, 100);
+    });
   }
 
   // === 保存数据 ===
@@ -538,6 +523,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  let currentModalType = '';
   function showAddModal(type) {
     currentModalType = type;
     document.getElementById('modalTitle').textContent = type === 'room' ? '新增房间' : '新增容器';
@@ -575,7 +561,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     handleModalCancel();
   }
 
-  // ✅ 核心修复：编辑时正确处理图片（包括拍照）
+  // ✅ 核心修复：图片 change 监听
+  document.getElementById('itemImage').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const compressedBlob = await compressImage(file);
+      if (compressedBlob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          pendingItemImageBase64 = reader.result;
+        };
+        reader.readAsDataURL(compressedBlob);
+      } else {
+        alert('图片处理失败，请重试。');
+        pendingItemImageBase64 = '';
+      }
+    } else {
+      pendingItemImageBase64 = '';
+    }
+  });
+
+  // ✅ 彻底修复保存逻辑
   async function handleSave() {
     const name = document.getElementById('itemName').value.trim();
     const room = document.getElementById('itemRoom').value.trim();
@@ -590,61 +596,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     const shelf = document.getElementById('itemShelf').value.trim();
     const location = document.getElementById('itemLocation').value.trim();
 
-    let imageBase64 = '';
     const editId = document.getElementById('editId').value;
     const existingItem = editId ? items.find(i => i.id === editId) : null;
-    const imageFile = document.getElementById('itemImage').files[0];
-    
-    // ✅ 如果用户选择了新图片（包括拍照），则压缩并替换
-    if (imageFile) {
-      const compressedBlob = await compressImage(imageFile);
-      if (compressedBlob) {
-        imageBase64 = await new Promise(r => {
-          const reader = new FileReader();
-          reader.onload = () => r(reader.result);
-          reader.readAsDataURL(compressedBlob);
-        });
-      } else {
-        alert('图片处理失败，请重试。');
-        return;
-      }
+
+    let imageToSave = '';
+    if (pendingItemImageBase64) {
+      imageToSave = pendingItemImageBase64;
     } else if (existingItem) {
-      // 保留原图
-      imageBase64 = existingItem.image || '';
+      imageToSave = existingItem.image || '';
     }
 
-    // 处理二维码
     let qrContent = '';
     const qrFile = document.getElementById('itemQrCode').files[0];
     if (qrFile) {
       qrContent = await decodeQRFromFile(qrFile);
       if (qrContent === null) {
         alert('未能识别二维码，请确保图片清晰且包含有效二维码。\n请重新上传或取消二维码上传。');
-        document.getElementById('itemQrCode').value = '';
         return;
       }
     } else if (existingItem) {
       qrContent = existingItem.qr_code || '';
     }
 
+    const newItem = {
+      id: editId || (Date.now().toString(36) + Math.random().toString(36).substr(2, 5)),
+      name, quantity, category, room, container, shelf,
+      specific_location: location,
+      image: imageToSave,
+      qr_code: qrContent
+    };
+
     if (editId) {
       const index = items.findIndex(i => i.id === editId);
-      if (index >= 0) {
-        items[index] = {
-          id: editId,
-          name, quantity, category, room, container, shelf,
-          specific_location: location, image: imageBase64, qr_code: qrContent
-        };
-      }
+      if (index >= 0) items[index] = newItem;
     } else {
-      items.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        name, quantity, category, room, container, shelf,
-        specific_location: location, image: imageBase64, qr_code: qrContent
-      });
+      items.push(newItem);
     }
 
     if (saveData()) {
+      pendingItemImageBase64 = '';
       resetForm();
     }
   }
@@ -658,12 +648,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('itemContainer').value = '';
     document.getElementById('itemShelf').value = '';
     document.getElementById('itemLocation').value = '';
-    document.getElementById('itemImage').value = ''; // ✅ 清空文件选择
+    document.getElementById('itemImage').value = '';
     document.getElementById('itemQrCode').value = '';
     document.getElementById('saveBtn').textContent = '➕ 添加物品';
+    pendingItemImageBase64 = ''; // ✅ 关键重置
   }
 
-  // 其他功能...
   function exportData() {
     const dataStr = JSON.stringify({ items, recentRooms, recentContainers, recentShelves }, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
@@ -716,17 +706,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   function switchTab(tabName) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-    document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
-    const panel = document.getElementById(`${tabName}Panel`);
-    panel.style.display = 'block';
+    
+    const targetTab = document.querySelector(`.tab[data-tab="${tabName}"]`);
+    const targetPanel = document.getElementById(`${tabName}Panel`);
+    
+    targetTab.classList.add('active');
+    targetPanel.style.display = 'block';
 
     if (tabName === 'stats') {
-      renderCharts(); // ✅ 每次进入都重建图表
+      setTimeout(() => renderCharts(), 50);
     }
   }
 
   // === 事件绑定 ===
-  let currentModalType = '';
   document.getElementById('addRoomBtn').addEventListener('click', () => showAddModal('room'));
   document.getElementById('addContainerBtn').addEventListener('click', () => showAddModal('container'));
   document.getElementById('modalCancelBtn').addEventListener('click', handleModalCancel);
@@ -769,4 +761,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 </body>
 </html>
-
