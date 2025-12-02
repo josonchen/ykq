@@ -93,7 +93,6 @@
   <label for="itemName">物品名称（必填）</label>
   <input type="text" id="itemName" placeholder="例如：螺丝刀、创可贴" />
 
-  <!-- ✅ 数量输入（带 label 和更好提示） -->
   <label for="itemQuantity">数量（个）</label>
   <input 
     type="number" 
@@ -204,16 +203,19 @@ function handleModalConfirm() {
   if (currentModalType === 'room') {
     if (!recentRooms.includes(value)) {
       recentRooms.unshift(value);
+      recentRooms = recentRooms.slice(0, 20); // 限制最多20个
       changed = true;
     }
   } else if (currentModalType === 'container') {
     if (!recentContainers.includes(value)) {
       recentContainers.unshift(value);
+      recentContainers = recentContainers.slice(0, 20);
       changed = true;
     }
   }
   if (changed) {
-    saveData(); // ✅ 关键修复：保存到 localStorage
+    saveData();           // 保存到 localStorage
+    renderFormOptions();  // ✅ 关键：立即刷新下拉框和 datalist
   }
   handleModalCancel();
 }
