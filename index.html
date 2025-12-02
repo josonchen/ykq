@@ -55,7 +55,19 @@
     .modal-buttons { display: flex; gap: 8px; margin-top: 12px; }
     .modal-buttons button { flex: 1; padding: 8px; font-size: 14px; }
 
-    canvas { display: block; margin: 20px auto; max-width: 100%; }
+    /* ✅ 关键修复：用 CSS 控制 canvas 尺寸，避免 Safari 白屏 */
+    .chart-container {
+      position: relative;
+      height: 220px;
+      margin: 20px 0;
+      width: 100%;
+    }
+    canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
     #photoUploadArea {
       display: block;
       text-align: center;
@@ -152,13 +164,13 @@
 <!-- 统计面板 -->
 <div id="statsPanel" class="panel">
   <h3 style="text-align:center;">按房间分布</h3>
-  <canvas id="roomChart" height="200"></canvas>
+  <div class="chart-container"><canvas id="roomChart"></canvas></div>
   
   <h3 style="text-align:center;">按分类分布</h3>
-  <canvas id="categoryChart" height="200"></canvas>
+  <div class="chart-container"><canvas id="categoryChart"></canvas></div>
   
   <h3 style="text-align:center;">按容器分布</h3>
-  <canvas id="containerChart" height="200"></canvas>
+  <div class="chart-container"><canvas id="containerChart"></canvas></div>
 </div>
 
 <!-- 自定义 Modal -->
@@ -190,8 +202,8 @@ let roomChartInstance = null;
 let categoryChartInstance = null;
 let containerChartInstance = null;
 
-// ✅ 新增：暂存用户刚上传的图片（Base64）
-let pendingItemImageBase64 = '';
+// ✅ 修复核心：精确跟踪用户是否选择了新图片
+let userSelectedNewImage = false; // 关键标志！
 
 // === 工具函数 ===
 function isDataTooLarge(dataToSave, maxSizeBytes = 4_700_000) {
@@ -250,7 +262,7 @@ async function decodeQRFromFile(file) {
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-  // === 加载数据（兼容旧版本）===
+  // === 加载数据 ===
   function loadDataFromStorage() {
     try {
       const savedItems = localStorage.getItem('homeItems_v5');
@@ -316,13 +328,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // === 图表渲染（彻底修复）===
+  // === 图表渲染（Safari 兼容）===
   function renderCharts() {
     [roomChartInstance, categoryChartInstance, containerChartInstance].forEach(chart => {
       if (chart) chart.destroy();
     });
 
-    requestAnimationFrame(() => {
+    // ✅ 延迟确保 DOM 可见
+    setTimeout(() => {
       // 房间
       const roomMap = {};
       items.forEach(item => {
@@ -399,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         containerCtx.font = '16px sans-serif';
         containerCtx.fillText('暂无容器数据', containerCtx.canvas.width / 2 - 60, containerCtx.canvas.height / 2);
       }
-    });
+    }, 100); // 增加延迟，确保 Safari 布局完成
   }
 
   // === 保存数据 ===
@@ -504,6 +517,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const item = items.find(i => i.id === id);
       if (!item) return;
       
+      // ✅ 编辑时重置标志
+      userSelectedNewImage = false;
+      pendingItemImageBase64 = ''; // 清空上次缓存
+      
       document.getElementById('editId').value = item.id;
       document.getElementById('itemName').value = item.name;
       document.getElementById('itemQuantity').value = item.quantity || 1;
@@ -561,10 +578,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     handleModalCancel();
   }
 
-  // ✅ 核心修复：图片 change 监听
+  // ✅ 核心修复：精确跟踪用户是否选择了新图片
   document.getElementById('itemImage').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (file) {
+      userSelectedNewImage = true; // ✅ 关键：标记用户选择了新图
       const compressedBlob = await compressImage(file);
       if (compressedBlob) {
         const reader = new FileReader();
@@ -574,9 +592,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         reader.readAsDataURL(compressedBlob);
       } else {
         alert('图片处理失败，请重试。');
+        userSelectedNewImage = false;
         pendingItemImageBase64 = '';
       }
     } else {
+      // 用户取消选择
+      userSelectedNewImage = false;
       pendingItemImageBase64 = '';
     }
   });
@@ -600,9 +621,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const existingItem = editId ? items.find(i => i.id === editId) : null;
 
     let imageToSave = '';
-    if (pendingItemImageBase64) {
+    if (userSelectedNewImage && pendingItemImageBase64) {
+      // ✅ 只有用户明确选择了新图，才使用新图
       imageToSave = pendingItemImageBase64;
     } else if (existingItem) {
+      // 否则保留原图（包括编辑时未换图的情况）
       imageToSave = existingItem.image || '';
     }
 
@@ -634,7 +657,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (saveData()) {
-      pendingItemImageBase64 = '';
       resetForm();
     }
   }
@@ -651,7 +673,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('itemImage').value = '';
     document.getElementById('itemQrCode').value = '';
     document.getElementById('saveBtn').textContent = '➕ 添加物品';
-    pendingItemImageBase64 = ''; // ✅ 关键重置
+    // ✅ 重置标志
+    userSelectedNewImage = false;
+    pendingItemImageBase64 = '';
   }
 
   function exportData() {
@@ -714,7 +738,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     targetPanel.style.display = 'block';
 
     if (tabName === 'stats') {
-      setTimeout(() => renderCharts(), 50);
+      // ✅ 延迟初始化，确保 Safari 布局完成
+      setTimeout(() => renderCharts(), 150);
     }
   }
 
