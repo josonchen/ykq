@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🏠 家庭物品管理</title>
+  <title>🏠 家庭物品管理系统</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css">
   <style>
@@ -11,14 +11,16 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { padding: 12px; background: #f2f2f7; color: #1c1c1e; line-height: 1.5; padding-bottom: 40px; }
     
-    h1 { text-align: center; margin: 12px 0 20px; font-size: 20px; font-weight: 600; color: #000; }
-    .tab-bar { display: flex; margin-bottom: 16px; background: #e5e5ea; border-radius: 10px; padding: 2px; }
-    .tab { flex: 1; padding: 8px; text-align: center; border-radius: 8px; cursor: pointer; font-size: 14px; color: #8e8e93; transition: all 0.2s; }
-    .tab.active { background: #fff; color: #007aff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: 500; }
+    h1 { text-align: center; margin: 10px 0 15px; font-size: 18px; font-weight: 600; color: #000; }
     
-    .panel { display: none; animation: fadeIn 0.3s ease; }
+    /* === Tab 导航 === */
+    .tab-bar { display: flex; margin-bottom: 16px; background: #e5e5ea; border-radius: 10px; padding: 2px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+    .tab { flex: 1; padding: 10px 0; text-align: center; border-radius: 8px; cursor: pointer; font-size: 14px; color: #8e8e93; transition: all 0.2s; font-weight: 500; }
+    .tab.active { background: #fff; color: #007aff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: 600; }
+    
+    .panel { display: none; animation: fadeIn 0.2s ease; }
     #managePanel { display: block; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
     /* === 表单元素 === */
     label { display: block; font-weight: 600; margin-top: 14px; margin-bottom: 6px; color: #333; font-size: 14px; }
@@ -29,7 +31,7 @@
     textarea { resize: vertical; min-height: 60px; }
     
     button { 
-      width: 100%; background: #007aff; color: white; border: none; cursor: pointer; padding: 14px; 
+      width: 100%; background: #007aff; color: white; border: none; cursor: pointer; padding: 12px; 
       border-radius: 12px; font-size: 16px; font-weight: 500; margin-top: 10px; 
       active: scale(0.98); transition: transform 0.1s;
     }
@@ -37,19 +39,18 @@
     button.secondary { background: #e5e5ea; color: #007aff; }
     button.danger { background: #ff3b30; color: white; }
     button.warning { background: #ff9500; color: white; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; background: #ccc; color: #666; }
+    
+    .input-group { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .input-group input, .input-group select { flex: 1; margin: 0; } /* 修正 margin */
+    .input-group button { width: auto; margin: 0; padding: 12px 16px; white-space: nowrap; height: 46px; } /* 固定高度对齐 */
 
-    .input-group { display: flex; gap: 8px; align-items: flex-start; }
-    .input-group input, .input-group select { flex: 1; }
-    .input-group button { width: auto; margin-top: 0; padding: 12px; white-space: nowrap; }
-
-    #ocrBtn { background: #34c759; color: white; padding: 0 16px; display: flex; align-items: center; justify-content: center; }
+    #ocrBtn { background: #34c759; color: white; }
 
     /* === 列表布局 === */
-    #itemsList { margin-top: 20px; }
+    #itemsList { margin-top: 10px; padding-bottom: 60px; }
     .item { 
       background: white; padding: 12px; margin-bottom: 12px; 
-      border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+      border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
     }
     .item-header { 
       display: flex; justify-content: space-between; align-items: center; 
@@ -70,7 +71,12 @@
     .item-actions button.edit-btn { color: #007aff; }
     .item-actions button.delete-btn { color: #ff3b30; }
 
-    /* === 图片区域 === */
+    /* 搜索栏与排序栏 */
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 10px; }
+    #searchInput { flex: 2; padding-left: 32px; background:#fff url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23999\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><circle cx=\'11\' cy=\'11\' r=\'8\'></circle><line x1=\'21\' y1=\'21\' x2=\'16.65\' y2=\'16.65\'></line></svg>') no-repeat 10px center; }
+    #sortSelect { flex: 1; padding: 10px; font-size: 13px; }
+
+    /* === 图片上传区域 === */
     #photoUploadArea {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 20px; border: 2px dashed #d1d1d6; border-radius: 12px;
@@ -114,27 +120,25 @@
 </head>
 <body>
 
-<h1>🏠 家庭物品管理47</h1>
+<h1>🏠 家庭物品管理25</h1>
 
 <div class="tab-bar">
-  <div class="tab active" data-tab="manage">📦 物品管理</div>
-  <div class="tab" data-tab="stats">📊 数据统计</div>
+  <div class="tab active" data-tab="manage">➕ 添加</div>
+  <div class="tab" data-tab="list">📋 清单</div>
+  <div class="tab" data-tab="stats">📊 统计</div>
 </div>
 
 <div id="managePanel" class="panel">
 
-  <label>物品基本信息</label>
+  <label>物品名称</label>
   <div class="input-group">
     <button type="button" id="ocrBtn">📷 拍字</button>
-    <input type="text" id="itemName" placeholder="物品名称" />
-    <input type="number" id="itemQuantity" style="width: 70px; flex:none;" placeholder="数量" value="1" min="1" inputmode="numeric" />
+    <input type="text" id="itemName" placeholder="输入物品名称" style="flex:2;" />
   </div>
-  <div style="font-size:12px; color:#888; margin-top:4px;">💡 提示：点击“拍字”后，框选文字区域越精准，识别越准确。</div>
-
-  <input type="file" id="fileInput" accept="image/*" style="display:none;" />
-
-  <label>存放位置</label>
+  
+  <label>数量 & 存放位置</label>
   <div class="input-group">
+    <input type="number" id="itemQuantity" style="width: 80px; flex:none;" placeholder="数量" value="1" min="1" inputmode="numeric" />
     <select id="itemRoom"><option value="">选择房间</option></select>
     <button type="button" class="secondary" id="addRoomBtn">➕</button>
   </div>
@@ -162,23 +166,34 @@
   </div>
 
   <input type="hidden" id="editId" value="" />
-  <button id="saveBtn">➕ 添加物品</button>
+  <button id="saveBtn">💾 保存物品</button>
 
-  <hr style="margin: 24px 0; border: 0; border-top: 1px solid #e0e0e0;" />
+  <div style="margin-top:20px; display:flex; gap:10px;">
+    <button id="exportBtn" class="secondary">📤 备份数据</button>
+    <button id="importBtn" class="warning">📥 恢复数据</button>
+  </div>
+   <button id="clearDataBtn" class="danger" style="margin-top:10px;">🗑️ 清空所有数据</button>
 
-  <input type="text" id="searchInput" placeholder="🔍 搜索名称、位置..." style="background:#fff url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23999\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><circle cx=\'11\' cy=\'11\' r=\'8\'></circle><line x1=\'21\' y1=\'21\' x2=\'16.65\' y2=\'16.65\'></line></svg>') no-repeat 12px center; padding-left: 36px;" />
-  
+  <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+</div>
+
+<div id="listPanel" class="panel">
+  <div class="filter-bar">
+    <input type="text" id="searchInput" placeholder="搜索名称、位置..." />
+    <select id="sortSelect">
+      <option value="updated_desc">按时间 (最新)</option>
+      <option value="updated_asc">按时间 (最早)</option>
+      <option value="name_asc">按名称 (A-Z)</option>
+      <option value="room_asc">按房间</option>
+      <option value="category_asc">按分类</option>
+    </select>
+  </div>
+
   <div id="itemsList"></div>
   
   <p style="text-align:center; margin:16px 0; color:#8e8e93; font-size:13px;">
     共 <span id="totalItems">0</span> 项 • 总计 <span id="totalQuantity">0</span> 个
   </p>
-
-  <div style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
-    <button id="exportBtn" class="secondary">📤 备份</button>
-    <button id="importBtn" class="warning">📥 恢复</button>
-    <button id="clearDataBtn" class="danger">🗑️ 清空</button>
-  </div>
 </div>
 
 <div id="statsPanel" class="panel">
@@ -199,9 +214,7 @@
 </div>
 
 <div id="cropModal">
-  <div class="crop-container">
-    <img id="cropImage" src="" style="max-width: 100%;" />
-  </div>
+  <div class="crop-container"><img id="cropImage" src="" style="max-width: 100%;" /></div>
   <div class="crop-toolbar">
     <button id="cancelCropBtn" style="background:#333; color:#fff;">取消</button>
     <div id="cropTitle" style="color:white; font-size:14px; font-weight:bold;">图片裁剪</div>
@@ -250,7 +263,20 @@ let roomChartInstance, categoryChartInstance, containerChartInstance;
 let userSelectedNewImage = false;
 let pendingItemImageBase64 = '';
 let cropper = null;
-let currentCropAction = ''; // 'ocr' 或 'photo'
+let currentCropAction = '';
+
+// === Tab 切换逻辑 ===
+function switchTab(tabName) {
+  document.querySelectorAll('.tab').forEach(x => {
+    x.classList.toggle('active', x.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+  document.getElementById(tabName + 'Panel').style.display = 'block';
+  
+  // 切换到 Tab 时的特殊处理
+  if (tabName === 'list') renderItems(); // 确保列表最新
+  if (tabName === 'stats') renderCharts();
+}
 
 // === 主逻辑 ===
 async function loadData() {
@@ -265,7 +291,12 @@ async function loadData() {
       const old = JSON.parse(localStorage.getItem('homeItems_v5'));
       if(Array.isArray(old)) { for(let i of old) await db.put(i); items=old; localStorage.removeItem('homeItems_v5'); }
     }
-  } catch (e) { console.error(e); } finally { hideLoading(); renderItems(); renderOptions(); }
+  } catch (e) { console.error(e); } finally { 
+    hideLoading(); 
+    renderItems(); 
+    renderOptions(); 
+    // 默认显示清单还是添加? 根据习惯，此处默认显示"添加"
+  }
 }
 
 function renderOptions(curr = null) {
@@ -276,13 +307,34 @@ function renderOptions(curr = null) {
   document.getElementById('shelfList').innerHTML = mkOpt(recentShelves);
 }
 
+// === 渲染列表 (支持排序) ===
 function renderItems() {
   const term = document.getElementById('searchInput').value.trim().toLowerCase();
+  const sortType = document.getElementById('sortSelect').value;
   const listEl = document.getElementById('itemsList');
-  const filtered = [...items].reverse().filter(item => {
+
+  // 1. 过滤
+  let filtered = items.filter(item => {
     return `${item.name} ${item.room} ${item.container||''} ${item.shelf||''} ${item.specific_location||''}`.toLowerCase().includes(term);
   });
 
+  // 2. 排序
+  filtered.sort((a, b) => {
+    const timeA = a.updatedAt || 0;
+    const timeB = b.updatedAt || 0;
+    const strA = (a.name || '').toLowerCase();
+    const strB = (b.name || '').toLowerCase();
+
+    switch (sortType) {
+      case 'updated_asc': return timeA - timeB;
+      case 'name_asc': return strA.localeCompare(strB, 'zh');
+      case 'room_asc': return (a.room||'').localeCompare(b.room||'', 'zh');
+      case 'category_asc': return (a.category||'').localeCompare(b.category||'', 'zh');
+      case 'updated_desc': default: return timeB - timeA;
+    }
+  });
+
+  // 3. 渲染
   listEl.innerHTML = filtered.length === 0 ? '<div style="text-align:center;padding:40px;color:#ccc;">暂无匹配物品</div>' : filtered.map(item => `
     <div class="item" data-id="${item.id}">
       <div class="item-header"><span class="item-name">${item.name}</span>${item.quantity>1?`<span class="quantity-badge">×${item.quantity}</span>`:''}</div>
@@ -291,6 +343,7 @@ function renderItems() {
           <div class="info-row"><strong>📍</strong> ${item.room}${item.container?` > ${item.container}`:''}${item.shelf?` > ${item.shelf}`:''}</div>
           ${item.category?`<div class="info-row"><strong>📂</strong> ${item.category}</div>`:''}
           ${item.specific_location?`<div class="info-row" style="color:#888;">📝 ${item.specific_location}</div>`:''}
+          <div class="info-row" style="color:#aaa;font-size:11px;">🕒 ${new Date(item.updatedAt||0).toLocaleDateString()}</div>
         </div>
         ${item.image?`<img class="item-thumb" src="${item.image}" onclick="viewImage('${item.id}')">`:'<div style="width:0;"></div>'}
       </div>
@@ -301,19 +354,21 @@ function renderItems() {
   document.getElementById('totalQuantity').textContent = items.reduce((a,b)=>a+(parseInt(b.quantity)||1),0);
 }
 
+// 监听搜索和排序
+document.getElementById('searchInput').addEventListener('input', renderItems);
+document.getElementById('sortSelect').addEventListener('change', renderItems);
+
 window.viewImage = (id) => {
   const item = items.find(i => i.id === id);
   if(item?.image) { const w = window.open(""); w.document.write(`<img src="${item.image}" style="width:100%;"/>`); }
 };
 
-// === 统一的图片选择与裁剪逻辑 ===
+// === 图片选择与裁剪逻辑 ===
 const fileInput = document.getElementById('fileInput');
 
-// 触发选择
 document.getElementById('ocrBtn').onclick = () => { currentCropAction = 'ocr'; fileInput.click(); };
 document.getElementById('photoUploadArea').onclick = () => { currentCropAction = 'photo'; fileInput.click(); };
 
-// 文件选择后 -> 打开裁剪
 fileInput.onchange = (e) => {
   const file = e.target.files[0];
   if(!file) return;
@@ -330,11 +385,11 @@ fileInput.onchange = (e) => {
       viewMode: 1, 
       dragMode: 'move', 
       autoCropArea: 0.8,
-      initialAspectRatio: NaN // 自由比例
+      initialAspectRatio: NaN 
     });
   };
   reader.readAsDataURL(file);
-  fileInput.value = ''; // 重置，允许重复选同一文件
+  fileInput.value = ''; 
 };
 
 document.getElementById('cancelCropBtn').onclick = () => {
@@ -344,18 +399,14 @@ document.getElementById('cancelCropBtn').onclick = () => {
 
 document.getElementById('confirmCropBtn').onclick = async () => {
   if(!cropper) return;
-  
-  // 1. 获取裁剪后的 Canvas
   const canvas = cropper.getCroppedCanvas();
   document.getElementById('cropModal').style.display = 'none';
   if(cropper) cropper.destroy();
 
-  // 2. 根据当前动作分流
   if (currentCropAction === 'ocr') {
     await performOCR(canvas);
   } else {
-    // 物品照片：压缩并预览
-    const base64 = canvas.toDataURL('image/jpeg', 0.7); // 质量 0.7
+    const base64 = canvas.toDataURL('image/jpeg', 0.7); 
     document.getElementById('photoPreviewInForm').src = base64;
     document.getElementById('photoPreviewInForm').style.display = 'block';
     pendingItemImageBase64 = base64;
@@ -363,25 +414,21 @@ document.getElementById('confirmCropBtn').onclick = async () => {
   }
 };
 
-// === OCR 核心逻辑 (含图像增强) ===
+// === OCR 逻辑 (带二值化) ===
 async function performOCR(canvas) {
   showLoading('正在增强图像并识别...');
   try {
-    // A. 图像预处理：转黑白二值化，提高 OCR 准确率
     const ctx = canvas.getContext('2d');
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
-      // 灰度公式
       let gray = 0.2126 * d[i] + 0.7152 * d[i+1] + 0.0722 * d[i+2];
-      // 阈值处理 (128) - 简单的二值化
       let val = (gray >= 120) ? 255 : 0; 
       d[i] = d[i+1] = d[i+2] = val;
     }
     ctx.putImageData(imgData, 0, 0);
     const processedImage = canvas.toDataURL('image/png');
 
-    // B. 执行识别
     const worker = await Tesseract.createWorker('chi_sim+eng');
     const ret = await worker.recognize(processedImage);
     await worker.terminate();
@@ -409,7 +456,6 @@ document.getElementById('saveBtn').onclick = async () => {
   const editId = document.getElementById('editId').value;
   const oldItem = editId ? items.find(i=>i.id===editId) : null;
   
-  // 图片逻辑：优先用新图 -> 否则用旧图 -> 否则为空
   let img = userSelectedNewImage ? pendingItemImageBase64 : (oldItem?.image || '');
 
   const item = {
@@ -425,19 +471,24 @@ document.getElementById('saveBtn').onclick = async () => {
 
   try {
     await db.put(item);
-    if(editId) { const i=items.findIndex(x=>x.id===editId); if(i>-1) items[i]=item; } else items.push(item);
+    if(editId) { 
+      const i=items.findIndex(x=>x.id===editId); 
+      if(i>-1) items[i]=item; 
+    } else {
+      items.push(item);
+    }
     
-    // 保存常用配置
     localStorage.setItem('recentRooms', JSON.stringify(recentRooms));
     localStorage.setItem('recentContainers', JSON.stringify(recentContainers));
     localStorage.setItem('recentShelves', JSON.stringify(recentShelves));
 
-    resetForm(); renderItems();
+    resetForm(); 
+    // 保存后留在添加页，还是跳转清单? 通常添加为了连续录入，故留在添加页，但给出反馈
     alert(editId ? '修改成功' : '添加成功');
   } catch(e) { alert('保存失败:'+e.message); }
 };
 
-// === 辅助功能 ===
+// === 列表交互 ===
 document.getElementById('itemsList').onclick = async (e) => {
   if(e.target.classList.contains('delete-btn')) {
     if(!confirm('确定删除?')) return;
@@ -448,6 +499,8 @@ document.getElementById('itemsList').onclick = async (e) => {
     const id = e.target.closest('.item').dataset.id;
     const item = items.find(i=>i.id===id);
     if(!item) return;
+    
+    // 填充表单
     document.getElementById('editId').value = item.id;
     document.getElementById('itemName').value = item.name;
     document.getElementById('itemQuantity').value = item.quantity;
@@ -465,16 +518,19 @@ document.getElementById('itemsList').onclick = async (e) => {
     
     userSelectedNewImage = false; pendingItemImageBase64 = '';
     document.getElementById('saveBtn').textContent = '💾 保存修改';
+    
+    // 切换到管理面板
+    switchTab('manage');
     window.scrollTo({top:0, behavior:'smooth'});
   }
 };
 
 function resetForm() {
   document.getElementById('editId').value = '';
-  document.querySelectorAll('input:not([type=hidden]), textarea, select').forEach(i=>i.value='');
+  document.querySelectorAll('#managePanel input:not([type=hidden]), #managePanel textarea, #managePanel select').forEach(i=>i.value='');
   document.getElementById('itemQuantity').value=1;
   document.getElementById('photoPreviewInForm').style.display='none';
-  document.getElementById('saveBtn').textContent = '➕ 添加物品';
+  document.getElementById('saveBtn').textContent = '💾 保存物品';
   userSelectedNewImage = false; pendingItemImageBase64 = '';
 }
 
@@ -519,19 +575,27 @@ document.getElementById('importBtn').onclick = () => {
 };
 document.getElementById('clearDataBtn').onclick = async () => { if(confirm('确定清空?')) { await db.clear(); items=[]; renderItems(); } };
 
-// 图表与初始化
+// Tab 点击事件
 document.querySelectorAll('.tab').forEach(t => t.onclick = function() {
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); this.classList.add('active');
-  document.querySelectorAll('.panel').forEach(p=>p.style.display='none'); document.getElementById(this.dataset.tab+'Panel').style.display='block';
-  if(this.dataset.tab==='stats') {
-    if(roomChartInstance) roomChartInstance.destroy(); if(categoryChartInstance) categoryChartInstance.destroy(); if(containerChartInstance) containerChartInstance.destroy();
-    const rd={}, cd={}, ctd={}; items.forEach(i=>{ rd[i.room]=(rd[i.room]||0)+1; if(i.category) cd[i.category]=(cd[i.category]||0)+1; if(i.container) ctd[i.container]=(ctd[i.container]||0)+1; });
-    const ctx = (id) => document.getElementById(id).getContext('2d');
-    roomChartInstance = new Chart(ctx('roomChart'), {type:'pie', data:{labels:Object.keys(rd), datasets:[{data:Object.values(rd), backgroundColor:['#007aff','#34c759','#ff9500','#ff3b30','#af52de']}]}, options:{maintainAspectRatio:false}});
-    categoryChartInstance = new Chart(ctx('categoryChart'), {type:'doughnut', data:{labels:Object.keys(cd), datasets:[{data:Object.values(cd), backgroundColor:['#5ac8fa','#ffcc00','#ff2d55','#5856d6']}]}, options:{maintainAspectRatio:false}});
-    containerChartInstance = new Chart(ctx('containerChart'), {type:'bar', data:{labels:Object.keys(ctd).slice(0,8), datasets:[{label:'数量',data:Object.values(ctd).slice(0,8), backgroundColor:'#007aff'}]}, options:{maintainAspectRatio:false}});
-  }
+  switchTab(this.dataset.tab);
 });
+
+function renderCharts() {
+  const ctx1 = document.getElementById('roomChart').getContext('2d');
+  const ctx2 = document.getElementById('categoryChart').getContext('2d');
+  const ctx3 = document.getElementById('containerChart').getContext('2d');
+  
+  if(roomChartInstance) roomChartInstance.destroy();
+  if(categoryChartInstance) categoryChartInstance.destroy();
+  if(containerChartInstance) containerChartInstance.destroy();
+
+  const rd={}, cd={}, ctd={}; items.forEach(i=>{ rd[i.room]=(rd[i.room]||0)+1; if(i.category) cd[i.category]=(cd[i.category]||0)+1; if(i.container) ctd[i.container]=(ctd[i.container]||0)+1; });
+  
+  roomChartInstance = new Chart(ctx1, {type:'pie', data:{labels:Object.keys(rd), datasets:[{data:Object.values(rd), backgroundColor:['#007aff','#34c759','#ff9500','#ff3b30','#af52de']}]}, options:{maintainAspectRatio:false}});
+  categoryChartInstance = new Chart(ctx2, {type:'doughnut', data:{labels:Object.keys(cd), datasets:[{data:Object.values(cd), backgroundColor:['#5ac8fa','#ffcc00','#ff2d55','#5856d6']}]}, options:{maintainAspectRatio:false}});
+  containerChartInstance = new Chart(ctx3, {type:'bar', data:{labels:Object.keys(ctd).slice(0,8), datasets:[{label:'数量',data:Object.values(ctd).slice(0,8), backgroundColor:'#007aff'}]}, options:{maintainAspectRatio:false}});
+}
+
 document.addEventListener('DOMContentLoaded', loadData);
 </script>
 </body>
