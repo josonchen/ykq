@@ -7,11 +7,10 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css">
   <style>
-    /* === 基础重置 === */
+    /* === 基础样式 === */
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { padding: 12px; background: #f2f2f7; color: #1c1c1e; line-height: 1.5; padding-bottom: 40px; }
     
-    /* === 标题与 Tab === */
     h1 { text-align: center; margin: 12px 0 20px; font-size: 20px; font-weight: 600; color: #000; }
     .tab-bar { display: flex; margin-bottom: 16px; background: #e5e5ea; border-radius: 10px; padding: 2px; }
     .tab { flex: 1; padding: 8px; text-align: center; border-radius: 8px; cursor: pointer; font-size: 14px; color: #8e8e93; transition: all 0.2s; }
@@ -27,7 +26,6 @@
       width: 100%; padding: 12px; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; background: #fff; appearance: none;
     }
     input:focus, select:focus, textarea:focus { outline: none; border-color: #007aff; }
-    
     textarea { resize: vertical; min-height: 60px; }
     
     button { 
@@ -45,19 +43,14 @@
     .input-group input, .input-group select { flex: 1; }
     .input-group button { width: auto; margin-top: 0; padding: 12px; white-space: nowrap; }
 
-    /* OCR 按钮样式 */
     #ocrBtn { background: #34c759; color: white; padding: 0 16px; display: flex; align-items: center; justify-content: center; }
 
-    /* === 物品列表布局 === */
+    /* === 列表布局 === */
     #itemsList { margin-top: 20px; }
     .item { 
-      background: white; 
-      padding: 12px; 
-      margin-bottom: 12px; 
-      border-radius: 12px; 
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+      background: white; padding: 12px; margin-bottom: 12px; 
+      border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
     }
-    
     .item-header { 
       display: flex; justify-content: space-between; align-items: center; 
       border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 8px;
@@ -67,65 +60,53 @@
 
     .item-body { display: flex; justify-content: space-between; gap: 12px; }
     .item-info { flex: 1; min-width: 0; }
-    
     .info-row { font-size: 13px; color: #666; margin-bottom: 4px; line-height: 1.4; display: flex; align-items: baseline; }
-    .info-row strong { color: #333; margin-right: 4px; white-space: nowrap; }
-    
     .item-thumb {
-      width: 80px; height: 80px; 
-      object-fit: cover; 
-      border-radius: 8px; 
-      border: 1px solid #eee;
-      flex-shrink: 0;
-      background-color: #f9f9f9;
+      width: 80px; height: 80px; object-fit: cover; 
+      border-radius: 8px; border: 1px solid #eee; flex-shrink: 0; background-color: #f9f9f9;
     }
-    
     .item-actions { margin-top: 12px; display: flex; gap: 10px; }
     .item-actions button { margin-top: 0; padding: 8px; font-size: 13px; border-radius: 8px; background: #f2f2f7; color: #333; }
     .item-actions button.edit-btn { color: #007aff; }
     .item-actions button.delete-btn { color: #ff3b30; }
 
-    /* === 图片上传区域 === */
+    /* === 图片区域 === */
     #photoUploadArea {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 20px; border: 2px dashed #d1d1d6; border-radius: 12px;
       background: #fafafa; color: #8e8e93; cursor: pointer; margin-top: 10px;
     }
     #photoPreviewInForm {
-      max-width: 100%; max-height: 200px; 
-      margin-top: 12px; border-radius: 8px; 
+      max-width: 100%; max-height: 200px; margin-top: 12px; border-radius: 8px; 
       display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
-    /* === 统计图表 === */
+    /* === 图表 === */
     .chart-container { position: relative; height: 220px; margin: 20px 0; width: 100%; background: #fff; padding: 10px; border-radius: 12px; }
 
-    /* === Modal (通用) === */
+    /* === Modals === */
     #customModal {
       display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;
-      backdrop-filter: blur(2px);
+      background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px);
     }
     #modalContent { background: white; padding: 24px; border-radius: 16px; width: 85%; max-width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
     #modalTitle { font-weight: 600; font-size: 18px; margin-bottom: 16px; text-align: center; }
     .modal-buttons { display: flex; gap: 12px; margin-top: 20px; }
-    
-    /* === 裁剪 Modal 专用 === */
+
+    /* 裁剪 Modal */
     #cropModal {
       display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: #000; z-index: 3000; flex-direction: column;
     }
     .crop-container { flex: 1; position: relative; overflow: hidden; }
     .crop-toolbar { 
-      height: 80px; background: #1c1c1e; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; 
+      height: 90px; background: #1c1c1e; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; padding-bottom: 20px;
     }
-    .crop-toolbar button { width: auto; margin: 0; padding: 8px 16px; font-size: 14px; }
-
-    /* Loading 遮罩 */
+    .crop-toolbar button { width: auto; margin: 0; padding: 8px 16px; font-size: 14px; border-radius: 18px; }
+    
     #loadingMask {
       display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(255,255,255,0.9); z-index: 4000; 
-      flex-direction: column; align-items: center; justify-content: center; text-align: center;
+      background: rgba(255,255,255,0.9); z-index: 4000; flex-direction: column; align-items: center; justify-content: center;
     }
     .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007aff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px;}
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -148,10 +129,9 @@
     <input type="text" id="itemName" placeholder="物品名称" />
     <input type="number" id="itemQuantity" style="width: 70px; flex:none;" placeholder="数量" value="1" min="1" inputmode="numeric" />
   </div>
-  <div style="font-size:12px; color:#666; margin-top:4px; line-height:1.4;">
-    💡 技巧：点击“拍字”后，拖动选框只框选<strong>核心汉字</strong>，识别更精准。
-  </div>
-  <input type="file" id="ocrInput" accept="image/*" capture="environment" style="display:none;" />
+  <div style="font-size:12px; color:#888; margin-top:4px;">💡 提示：点击“拍字”后，框选文字区域越精准，识别越准确。</div>
+
+  <input type="file" id="fileInput" accept="image/*" style="display:none;" />
 
   <label>存放位置</label>
   <div class="input-group">
@@ -175,12 +155,11 @@
   <datalist id="categoryList"></datalist>
   <textarea id="itemLocation" placeholder="备注或更具体的位置描述..."></textarea>
 
-  <label>物品照片</label>
+  <label>物品照片 (支持裁剪)</label>
   <div id="photoUploadArea">
     <span>📸 点击拍照或选择照片</span>
     <img id="photoPreviewInForm" src="" alt="预览" />
   </div>
-  <input type="file" id="itemImage" accept="image/*" style="display:none;" />
 
   <input type="hidden" id="editId" value="" />
   <button id="saveBtn">➕ 添加物品</button>
@@ -224,9 +203,9 @@
     <img id="cropImage" src="" style="max-width: 100%;" />
   </div>
   <div class="crop-toolbar">
-    <button id="cancelCropBtn" style="background:#333;">取消</button>
-    <div style="color:white; font-size:12px;">请框选文字区域</div>
-    <button id="confirmCropBtn" style="background:#34c759;">✅ 识别</button>
+    <button id="cancelCropBtn" style="background:#333; color:#fff;">取消</button>
+    <div id="cropTitle" style="color:white; font-size:14px; font-weight:bold;">图片裁剪</div>
+    <button id="confirmCropBtn" style="background:#34c759; color:#fff;">✅ 确认</button>
   </div>
 </div>
 
@@ -240,72 +219,26 @@
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
 
 <script>
-// === Service Worker 注册 ===
+// === Service Worker ===
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js')
-    .then(() => console.log('SW Registered'))
-    .catch(err => console.log('SW Failed', err));
+  navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Fail', err));
 }
 
-// === IndexedDB 封装 ===
+// === IndexedDB ===
 const DB_NAME = 'HomeItemsDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'items';
-
 const db = {
-  open: () => {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = (e) => {
-        const database = e.target.result;
-        if (!database.objectStoreNames.contains(STORE_NAME)) {
-          database.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        }
-      };
-      request.onsuccess = (e) => resolve(e.target.result);
-      request.onerror = (e) => reject(e);
-    });
-  },
-  getAll: async () => {
-    const database = await db.open();
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => reject(request.error);
-    });
-  },
-  put: async (item) => {
-    const database = await db.open();
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.put(item);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  },
-  delete: async (id) => {
-    const database = await db.open();
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.delete(id);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  },
-  clear: async () => {
-    const database = await db.open();
-    return new Promise((resolve, reject) => {
-      const tx = database.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.clear();
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  }
+  open: () => new Promise((resolve, reject) => {
+    const r = indexedDB.open(DB_NAME, DB_VERSION);
+    r.onupgradeneeded = e => { if(!e.target.result.objectStoreNames.contains(STORE_NAME)) e.target.result.createObjectStore(STORE_NAME, { keyPath: 'id' }); };
+    r.onsuccess = e => resolve(e.target.result);
+    r.onerror = e => reject(e);
+  }),
+  getAll: async () => { const d = await db.open(); return new Promise((resolve) => { d.transaction(STORE_NAME,'readonly').objectStore(STORE_NAME).getAll().onsuccess = e => resolve(e.target.result||[]); }); },
+  put: async (item) => { const d = await db.open(); return new Promise((resolve) => { d.transaction(STORE_NAME,'readwrite').objectStore(STORE_NAME).put(item).onsuccess = resolve; }); },
+  delete: async (id) => { const d = await db.open(); return new Promise((resolve) => { d.transaction(STORE_NAME,'readwrite').objectStore(STORE_NAME).delete(id).onsuccess = resolve; }); },
+  clear: async () => { const d = await db.open(); return new Promise((resolve) => { d.transaction(STORE_NAME,'readwrite').objectStore(STORE_NAME).clear().onsuccess = resolve; }); }
 };
 
 // === 全局变量 ===
@@ -313,18 +246,13 @@ let items = [];
 let recentRooms = ["主卧","次卧","厨房","客厅","卫生间","阳台","车库"];
 let recentContainers = ["衣柜","抽屉","工具箱","书架","冰箱"];
 let recentShelves = ["上层","中层","下层","第一格","第二格"];
-
 let roomChartInstance, categoryChartInstance, containerChartInstance;
 let userSelectedNewImage = false;
 let pendingItemImageBase64 = '';
-let isImageProcessing = false;
+let cropper = null;
+let currentCropAction = ''; // 'ocr' 或 'photo'
 
-// 裁剪器实例
-let cropper = null; 
-
-// === 核心功能 ===
-
-// 1. 数据加载与迁移
+// === 主逻辑 ===
 async function loadData() {
   showLoading('加载数据...');
   try {
@@ -333,468 +261,278 @@ async function loadData() {
     if(localStorage.getItem('recentShelves')) recentShelves = JSON.parse(localStorage.getItem('recentShelves'));
 
     items = await db.getAll();
-
-    if (items.length === 0) {
-      const oldData = localStorage.getItem('homeItems_v5');
-      if (oldData) {
-        const oldItems = JSON.parse(oldData);
-        if (Array.isArray(oldItems) && oldItems.length > 0) {
-          for (const item of oldItems) {
-            await db.put(item);
-          }
-          items = oldItems;
-          localStorage.removeItem('homeItems_v5'); 
-        }
-      }
+    if (items.length === 0 && localStorage.getItem('homeItems_v5')) {
+      const old = JSON.parse(localStorage.getItem('homeItems_v5'));
+      if(Array.isArray(old)) { for(let i of old) await db.put(i); items=old; localStorage.removeItem('homeItems_v5'); }
     }
-  } catch (e) {
-    console.error('加载失败', e);
-  } finally {
-    hideLoading();
-    renderItems();
-    renderOptions();
-  }
+  } catch (e) { console.error(e); } finally { hideLoading(); renderItems(); renderOptions(); }
 }
 
-// 2. 渲染表单选项
-function renderOptions(currentItem = null) {
-  const roomSel = document.getElementById('itemRoom');
-  const contDL = document.getElementById('containerList');
-  const catDL = document.getElementById('categoryList');
-  const shelfDL = document.getElementById('shelfList');
-
-  const roomsToShow = [...new Set([...recentRooms, ...(currentItem?.room ? [currentItem.room] : [])])];
-  roomSel.innerHTML = '<option value="">请选择房间</option>' + 
-    roomsToShow.map(r => `<option value="${r}">${r}</option>`).join('');
-
-  const contsToShow = [...new Set([...recentContainers, ...(currentItem?.container ? [currentItem.container] : [])])];
-  contDL.innerHTML = contsToShow.map(c => `<option value="${c}">`).join('');
-
-  const cats = [...new Set(items.map(i => i.category).filter(Boolean))];
-  catDL.innerHTML = cats.map(c => `<option value="${c}">`).join('');
-
-  shelfDL.innerHTML = recentShelves.map(s => `<option value="${s}">`).join('');
+function renderOptions(curr = null) {
+  const mkOpt = arr => arr.map(v => `<option value="${v}">${v}</option>`).join('');
+  document.getElementById('itemRoom').innerHTML = '<option value="">请选择房间</option>' + mkOpt([...new Set([...recentRooms, ...(curr?.room?[curr.room]:[])])]);
+  document.getElementById('containerList').innerHTML = mkOpt([...new Set([...recentContainers, ...(curr?.container?[curr.container]:[])])]);
+  document.getElementById('categoryList').innerHTML = mkOpt([...new Set(items.map(i=>i.category).filter(Boolean))]);
+  document.getElementById('shelfList').innerHTML = mkOpt(recentShelves);
 }
 
-// 3. 渲染列表
 function renderItems() {
   const term = document.getElementById('searchInput').value.trim().toLowerCase();
   const listEl = document.getElementById('itemsList');
-  const sortedItems = [...items].reverse();
-
-  const filtered = sortedItems.filter(item => {
-    const fullText = `${item.name} ${item.room} ${item.container || ''} ${item.shelf || ''} ${item.specific_location || ''}`.toLowerCase();
-    return fullText.includes(term);
+  const filtered = [...items].reverse().filter(item => {
+    return `${item.name} ${item.room} ${item.container||''} ${item.shelf||''} ${item.specific_location||''}`.toLowerCase().includes(term);
   });
 
-  if (filtered.length === 0) {
-    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#ccc;">暂无匹配物品</div>';
-  } else {
-    listEl.innerHTML = filtered.map(item => {
-      let path = item.room;
-      if (item.container) path += ` > ${item.container}`;
-      if (item.shelf) path += ` > ${item.shelf}`;
-
-      return `
-      <div class="item" data-id="${item.id}">
-        <div class="item-header">
-          <span class="item-name">${item.name}</span>
-          ${item.quantity > 1 ? `<span class="quantity-badge">×${item.quantity}</span>` : ''}
+  listEl.innerHTML = filtered.length === 0 ? '<div style="text-align:center;padding:40px;color:#ccc;">暂无匹配物品</div>' : filtered.map(item => `
+    <div class="item" data-id="${item.id}">
+      <div class="item-header"><span class="item-name">${item.name}</span>${item.quantity>1?`<span class="quantity-badge">×${item.quantity}</span>`:''}</div>
+      <div class="item-body">
+        <div class="item-info">
+          <div class="info-row"><strong>📍</strong> ${item.room}${item.container?` > ${item.container}`:''}${item.shelf?` > ${item.shelf}`:''}</div>
+          ${item.category?`<div class="info-row"><strong>📂</strong> ${item.category}</div>`:''}
+          ${item.specific_location?`<div class="info-row" style="color:#888;">📝 ${item.specific_location}</div>`:''}
         </div>
-        
-        <div class="item-body">
-          <div class="item-info">
-            <div class="info-row"><strong>📍</strong> ${path}</div>
-            ${item.category ? `<div class="info-row"><strong>📂</strong> ${item.category}</div>` : ''}
-            ${item.specific_location ? `<div class="info-row" style="color:#888;">📝 ${item.specific_location}</div>` : ''}
-          </div>
-          
-          ${item.image 
-            ? `<img class="item-thumb" src="${item.image}" onclick="viewImage('${item.id}')" alt="图">` 
-            : '<div style="width:0;"></div>' 
-          }
-        </div>
-
-        <div class="item-actions">
-          <button class="edit-btn">✏️ 编辑</button>
-          <button class="delete-btn">🗑️ 删除</button>
-        </div>
+        ${item.image?`<img class="item-thumb" src="${item.image}" onclick="viewImage('${item.id}')">`:'<div style="width:0;"></div>'}
       </div>
-      `;
-    }).join('');
-  }
+      <div class="item-actions"><button class="edit-btn">✏️ 编辑</button><button class="delete-btn">🗑️ 删除</button></div>
+    </div>`).join('');
   
   document.getElementById('totalItems').textContent = items.length;
-  document.getElementById('totalQuantity').textContent = items.reduce((a,b) => a + (parseInt(b.quantity)||1), 0);
+  document.getElementById('totalQuantity').textContent = items.reduce((a,b)=>a+(parseInt(b.quantity)||1),0);
 }
 
 window.viewImage = (id) => {
   const item = items.find(i => i.id === id);
-  if(item && item.image) {
-    const w = window.open("");
-    w.document.write(`<img src="${item.image}" style="width:100%;" />`);
-  }
+  if(item?.image) { const w = window.open(""); w.document.write(`<img src="${item.image}" style="width:100%;"/>`); }
 };
 
-function compressImage(file) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (e) => {
-      const img = new Image();
-      img.src = e.target.result;
-      img.onload = () => {
-        const maxWidth = 800; 
-        let w = img.width, h = img.height;
-        if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.6));
-      };
-    };
-  });
-}
+// === 统一的图片选择与裁剪逻辑 ===
+const fileInput = document.getElementById('fileInput');
 
-// === OCR 拍字识别 (新流程：拍照 -> 裁剪 -> 识别) ===
+// 触发选择
+document.getElementById('ocrBtn').onclick = () => { currentCropAction = 'ocr'; fileInput.click(); };
+document.getElementById('photoUploadArea').onclick = () => { currentCropAction = 'photo'; fileInput.click(); };
 
-// 1. 点击按钮触发拍照
-document.getElementById('ocrBtn').addEventListener('click', () => {
-  document.getElementById('ocrInput').click();
-});
-
-// 2. 照片选定后，显示裁剪 Modal
-document.getElementById('ocrInput').addEventListener('change', (e) => {
+// 文件选择后 -> 打开裁剪
+fileInput.onchange = (e) => {
   const file = e.target.files[0];
-  if (!file) return;
-
+  if(!file) return;
   const reader = new FileReader();
   reader.onload = (evt) => {
-    const imgElement = document.getElementById('cropImage');
-    imgElement.src = evt.target.result;
-    
+    const img = document.getElementById('cropImage');
+    img.src = evt.target.result;
     document.getElementById('cropModal').style.display = 'flex';
-
-    // 初始化裁剪器
-    if (cropper) { cropper.destroy(); }
-    cropper = new Cropper(imgElement, {
-      viewMode: 1, // 限制裁剪框不超过画布
-      dragMode: 'move', // 可以拖动图片
-      autoCropArea: 0.6, // 默认裁剪框大小
-      ready() {
-        // 准备好了
-      }
+    document.getElementById('cropTitle').innerText = currentCropAction === 'ocr' ? '框选文字区域' : '裁剪物品照片';
+    document.getElementById('confirmCropBtn').innerText = currentCropAction === 'ocr' ? '识别' : '确认使用';
+    
+    if(cropper) cropper.destroy();
+    cropper = new Cropper(img, {
+      viewMode: 1, 
+      dragMode: 'move', 
+      autoCropArea: 0.8,
+      initialAspectRatio: NaN // 自由比例
     });
   };
   reader.readAsDataURL(file);
-  e.target.value = ''; // 重置 input
-});
+  fileInput.value = ''; // 重置，允许重复选同一文件
+};
 
-// 3. 取消裁剪
-document.getElementById('cancelCropBtn').addEventListener('click', () => {
+document.getElementById('cancelCropBtn').onclick = () => {
   document.getElementById('cropModal').style.display = 'none';
-  if (cropper) cropper.destroy();
-});
+  if(cropper) cropper.destroy();
+};
 
-// 4. 确认裁剪并开始识别
-document.getElementById('confirmCropBtn').addEventListener('click', async () => {
-  if (!cropper) return;
+document.getElementById('confirmCropBtn').onclick = async () => {
+  if(!cropper) return;
   
-  // 获取裁剪后的 Canvas
+  // 1. 获取裁剪后的 Canvas
   const canvas = cropper.getCroppedCanvas();
-  const croppedImageBase64 = canvas.toDataURL('image/png');
-  
-  // 关闭 Modal
   document.getElementById('cropModal').style.display = 'none';
-  if (cropper) cropper.destroy();
+  if(cropper) cropper.destroy();
 
-  showLoading('正在下载中文库并识别...\n首次较慢，请保持网络');
+  // 2. 根据当前动作分流
+  if (currentCropAction === 'ocr') {
+    await performOCR(canvas);
+  } else {
+    // 物品照片：压缩并预览
+    const base64 = canvas.toDataURL('image/jpeg', 0.7); // 质量 0.7
+    document.getElementById('photoPreviewInForm').src = base64;
+    document.getElementById('photoPreviewInForm').style.display = 'block';
+    pendingItemImageBase64 = base64;
+    userSelectedNewImage = true;
+  }
+};
 
+// === OCR 核心逻辑 (含图像增强) ===
+async function performOCR(canvas) {
+  showLoading('正在增强图像并识别...');
   try {
-    // 创建 Tesseract Worker (强制使用中文+英文)
+    // A. 图像预处理：转黑白二值化，提高 OCR 准确率
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      // 灰度公式
+      let gray = 0.2126 * d[i] + 0.7152 * d[i+1] + 0.0722 * d[i+2];
+      // 阈值处理 (128) - 简单的二值化
+      let val = (gray >= 120) ? 255 : 0; 
+      d[i] = d[i+1] = d[i+2] = val;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    const processedImage = canvas.toDataURL('image/png');
+
+    // B. 执行识别
     const worker = await Tesseract.createWorker('chi_sim+eng');
-    
-    // 识别裁剪后的图片
-    const ret = await worker.recognize(croppedImageBase64);
+    const ret = await worker.recognize(processedImage);
     await worker.terminate();
 
-    const text = ret.data.text.replace(/\s+/g, '').trim(); // 去除所有空格
-    
-    if (text) {
+    const text = ret.data.text.replace(/\s+/g, '').trim();
+    if(text) {
       document.getElementById('itemName').value = text;
-      // 自动复制到剪贴板 (可选)
-      // navigator.clipboard.writeText(text).catch(() => {});
     } else {
-      alert('未识别到文字，请确保文字清晰且在框内');
+      alert('未识别到清晰文字，请重试');
     }
-
   } catch (err) {
     console.error(err);
-    alert('识别失败：' + (err.message || '网络错误'));
+    alert('识别失败: ' + err.message);
   } finally {
     hideLoading();
   }
-});
+}
 
-// === 保存/编辑/删除 ===
-document.getElementById('saveBtn').addEventListener('click', async () => {
-  if (isImageProcessing) { alert('正在处理图片，请稍候...'); return; }
-
+// === 保存逻辑 ===
+document.getElementById('saveBtn').onclick = async () => {
   const name = document.getElementById('itemName').value.trim();
   const room = document.getElementById('itemRoom').value;
-  
-  if (!name) return alert('请输入物品名称');
-  if (!room) return alert('请选择房间');
+  if(!name || !room) return alert('名称和房间必填');
 
   const editId = document.getElementById('editId').value;
-  const oldItem = editId ? items.find(i => i.id === editId) : null;
+  const oldItem = editId ? items.find(i=>i.id===editId) : null;
+  
+  // 图片逻辑：优先用新图 -> 否则用旧图 -> 否则为空
+  let img = userSelectedNewImage ? pendingItemImageBase64 : (oldItem?.image || '');
 
-  let finalImage = '';
-  if (userSelectedNewImage && pendingItemImageBase64) {
-    finalImage = pendingItemImageBase64;
-  } else if (oldItem) {
-    finalImage = oldItem.image || '';
-  }
-
-  const newItem = {
+  const item = {
     id: editId || Date.now().toString(36),
-    name,
-    quantity: parseInt(document.getElementById('itemQuantity').value) || 1,
-    room,
+    name, room, image: img,
+    quantity: parseInt(document.getElementById('itemQuantity').value)||1,
     container: document.getElementById('itemContainer').value.trim(),
     shelf: document.getElementById('itemShelf').value.trim(),
     category: document.getElementById('itemCategory').value.trim(),
     specific_location: document.getElementById('itemLocation').value.trim(),
-    image: finalImage,
     updatedAt: Date.now()
   };
 
   try {
-    await db.put(newItem);
-    if (editId) {
-      const idx = items.findIndex(i => i.id === editId);
-      if (idx > -1) items[idx] = newItem;
-    } else {
-      items.push(newItem);
-    }
+    await db.put(item);
+    if(editId) { const i=items.findIndex(x=>x.id===editId); if(i>-1) items[i]=item; } else items.push(item);
     
+    // 保存常用配置
     localStorage.setItem('recentRooms', JSON.stringify(recentRooms));
     localStorage.setItem('recentContainers', JSON.stringify(recentContainers));
     localStorage.setItem('recentShelves', JSON.stringify(recentShelves));
 
-    resetForm();
-    renderItems();
-    alert(editId ? '✅ 修改成功' : '✅ 添加成功');
-  } catch(e) {
-    console.error(e);
-    alert('❌ 保存失败：' + e.message);
-  }
-});
+    resetForm(); renderItems();
+    alert(editId ? '修改成功' : '添加成功');
+  } catch(e) { alert('保存失败:'+e.message); }
+};
 
-document.getElementById('itemsList').addEventListener('click', async (e) => {
-  if (e.target.classList.contains('edit-btn')) {
+// === 辅助功能 ===
+document.getElementById('itemsList').onclick = async (e) => {
+  if(e.target.classList.contains('delete-btn')) {
+    if(!confirm('确定删除?')) return;
     const id = e.target.closest('.item').dataset.id;
-    const item = items.find(i => i.id === id);
-    if (!item) return;
-
+    await db.delete(id); items = items.filter(i=>i.id!==id); renderItems();
+  }
+  if(e.target.classList.contains('edit-btn')) {
+    const id = e.target.closest('.item').dataset.id;
+    const item = items.find(i=>i.id===id);
+    if(!item) return;
     document.getElementById('editId').value = item.id;
     document.getElementById('itemName').value = item.name;
     document.getElementById('itemQuantity').value = item.quantity;
-    document.getElementById('itemCategory').value = item.category || '';
-    document.getElementById('itemShelf').value = item.shelf || '';
-    document.getElementById('itemLocation').value = item.specific_location || '';
-    document.getElementById('itemContainer').value = item.container || '';
+    document.getElementById('itemCategory').value = item.category||'';
+    document.getElementById('itemShelf').value = item.shelf||'';
+    document.getElementById('itemLocation').value = item.specific_location||'';
+    document.getElementById('itemContainer').value = item.container||'';
     
-    if (!recentRooms.includes(item.room)) recentRooms.push(item.room);
+    if(!recentRooms.includes(item.room)) recentRooms.push(item.room);
     renderOptions(item);
     document.getElementById('itemRoom').value = item.room;
 
     const prev = document.getElementById('photoPreviewInForm');
-    if (item.image) {
-      prev.src = item.image;
-      prev.style.display = 'block';
-    } else {
-      prev.style.display = 'none';
-      prev.src = '';
-    }
-
-    userSelectedNewImage = false;
-    pendingItemImageBase64 = '';
-    document.getElementById('itemImage').value = ''; 
-
+    if(item.image) { prev.src = item.image; prev.style.display='block'; } else { prev.style.display='none'; }
+    
+    userSelectedNewImage = false; pendingItemImageBase64 = '';
     document.getElementById('saveBtn').textContent = '💾 保存修改';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({top:0, behavior:'smooth'});
   }
-
-  if (e.target.classList.contains('delete-btn')) {
-    if (confirm('确定删除吗？')) {
-      const id = e.target.closest('.item').dataset.id;
-      try {
-        await db.delete(id);
-        items = items.filter(i => i.id !== id);
-        renderItems();
-      } catch(e) {
-        alert('删除失败');
-      }
-    }
-  }
-});
-
-document.getElementById('itemImage').addEventListener('change', async function(e) {
-  const file = e.target.files[0];
-  const prev = document.getElementById('photoPreviewInForm');
-  if (!file) return;
-
-  prev.src = URL.createObjectURL(file);
-  prev.style.display = 'block';
-  
-  isImageProcessing = true;
-  document.getElementById('saveBtn').disabled = true;
-  document.getElementById('saveBtn').textContent = '图片处理中...';
-
-  try {
-    pendingItemImageBase64 = await compressImage(file);
-    userSelectedNewImage = true;
-  } catch (err) {
-    alert('图片处理失败');
-    userSelectedNewImage = false;
-  } finally {
-    isImageProcessing = false;
-    document.getElementById('saveBtn').disabled = false;
-    const isEdit = document.getElementById('editId').value;
-    document.getElementById('saveBtn').textContent = isEdit ? '💾 保存修改' : '➕ 添加物品';
-  }
-});
+};
 
 function resetForm() {
   document.getElementById('editId').value = '';
-  document.getElementById('itemName').value = '';
-  document.getElementById('itemQuantity').value = 1;
-  document.getElementById('itemRoom').value = '';
-  document.getElementById('itemContainer').value = '';
-  document.getElementById('itemShelf').value = '';
-  document.getElementById('itemCategory').value = '';
-  document.getElementById('itemLocation').value = '';
-  document.getElementById('itemImage').value = ''; 
-  
-  document.getElementById('photoPreviewInForm').style.display = 'none';
-  document.getElementById('photoPreviewInForm').src = '';
-  
+  document.querySelectorAll('input:not([type=hidden]), textarea, select').forEach(i=>i.value='');
+  document.getElementById('itemQuantity').value=1;
+  document.getElementById('photoPreviewInForm').style.display='none';
   document.getElementById('saveBtn').textContent = '➕ 添加物品';
-  userSelectedNewImage = false;
-  pendingItemImageBase64 = '';
+  userSelectedNewImage = false; pendingItemImageBase64 = '';
 }
 
-function showLoading(text) {
-  document.getElementById('loadingText').innerText = text; // 支持换行
-  document.getElementById('loadingMask').style.display = 'flex';
-}
-function hideLoading() {
-  document.getElementById('loadingMask').style.display = 'none';
-}
+function showLoading(txt) { document.getElementById('loadingText').innerText = txt; document.getElementById('loadingMask').style.display = 'flex'; }
+function hideLoading() { document.getElementById('loadingMask').style.display = 'none'; }
 
+// 模态框逻辑
 let modalType = '';
-document.getElementById('addRoomBtn').onclick = () => showModal('room');
-document.getElementById('addContainerBtn').onclick = () => showModal('container');
-
-function showModal(type) {
-  modalType = type;
-  document.getElementById('modalTitle').innerText = type === 'room' ? '新增房间' : '新增容器';
-  document.getElementById('customModal').style.display = 'flex';
-  document.getElementById('modalInput').focus();
-}
-
-document.getElementById('modalConfirmBtn').onclick = () => {
-  const val = document.getElementById('modalInput').value.trim();
-  if(val) {
-    if(modalType === 'room' && !recentRooms.includes(val)) recentRooms.push(val);
-    if(modalType === 'container' && !recentContainers.includes(val)) recentContainers.push(val);
+const showModal = (t) => { modalType=t; document.getElementById('modalTitle').innerText=t==='room'?'新增房间':'新增容器'; document.getElementById('customModal').style.display='flex'; document.getElementById('modalInput').focus(); };
+document.getElementById('addRoomBtn').onclick=()=>showModal('room'); document.getElementById('addContainerBtn').onclick=()=>showModal('container');
+document.getElementById('modalCancelBtn').onclick=()=>document.getElementById('customModal').style.display='none';
+document.getElementById('modalConfirmBtn').onclick=()=>{
+  const v = document.getElementById('modalInput').value.trim();
+  if(v) { 
+    if(modalType==='room' && !recentRooms.includes(v)) recentRooms.push(v);
+    if(modalType==='container' && !recentContainers.includes(v)) recentContainers.push(v);
     renderOptions();
     localStorage.setItem('recentRooms', JSON.stringify(recentRooms));
     localStorage.setItem('recentContainers', JSON.stringify(recentContainers));
   }
-  document.getElementById('customModal').style.display = 'none';
-  document.getElementById('modalInput').value = '';
+  document.getElementById('customModal').style.display='none'; document.getElementById('modalInput').value='';
 };
 
-document.getElementById('modalCancelBtn').onclick = () => {
-  document.getElementById('customModal').style.display = 'none';
-};
-
+// 导出导入
 document.getElementById('exportBtn').onclick = () => {
-  const blob = new Blob([JSON.stringify({items, recentRooms, recentContainers, recentShelves},null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `家庭物品备份_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
+  const url = URL.createObjectURL(new Blob([JSON.stringify({items, recentRooms, recentContainers, recentShelves},null,2)], {type:'application/json'}));
+  const a = document.createElement('a'); a.href=url; a.download=`备份_${new Date().toISOString().slice(0,10)}.json`; a.click();
 };
-
 document.getElementById('importBtn').onclick = () => {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.onchange = async (e) => {
-    const text = await e.target.files[0].text();
+  const inp = document.createElement('input'); inp.type='file';
+  inp.onchange = async(e) => {
     showLoading('正在导入...');
     try {
-      const data = JSON.parse(text);
-      if(data.items) {
-        await db.clear();
-        for (const item of data.items) {
-          await db.put(item);
-        }
-      }
-      if(data.recentRooms) localStorage.setItem('recentRooms', JSON.stringify(data.recentRooms));
-      if(data.recentContainers) localStorage.setItem('recentContainers', JSON.stringify(data.recentContainers));
-      
-      await loadData();
-      alert('✅ 导入成功');
-    } catch(err) { alert('❌ 格式错误'); }
-    finally { hideLoading(); }
+      const d = JSON.parse(await e.target.files[0].text());
+      if(d.items) { await db.clear(); for(let i of d.items) await db.put(i); }
+      if(d.recentRooms) localStorage.setItem('recentRooms', JSON.stringify(d.recentRooms));
+      if(d.recentContainers) localStorage.setItem('recentContainers', JSON.stringify(d.recentContainers));
+      await loadData(); alert('导入成功');
+    } catch(err){ alert('文件错误'); } finally { hideLoading(); }
   };
-  input.click();
+  inp.click();
 };
+document.getElementById('clearDataBtn').onclick = async () => { if(confirm('确定清空?')) { await db.clear(); items=[]; renderItems(); } };
 
-document.getElementById('clearDataBtn').onclick = async () => {
-  if(confirm('⚠️ 确定清空所有数据？不可恢复！')) {
-    await db.clear();
-    items = [];
-    renderItems();
-  }
-};
-
+// 图表与初始化
 document.querySelectorAll('.tab').forEach(t => t.onclick = function() {
-  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-  this.classList.add('active');
-  document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-  document.getElementById(this.dataset.tab + 'Panel').style.display = 'block';
-  if (this.dataset.tab === 'stats') renderCharts();
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); this.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.style.display='none'); document.getElementById(this.dataset.tab+'Panel').style.display='block';
+  if(this.dataset.tab==='stats') {
+    if(roomChartInstance) roomChartInstance.destroy(); if(categoryChartInstance) categoryChartInstance.destroy(); if(containerChartInstance) containerChartInstance.destroy();
+    const rd={}, cd={}, ctd={}; items.forEach(i=>{ rd[i.room]=(rd[i.room]||0)+1; if(i.category) cd[i.category]=(cd[i.category]||0)+1; if(i.container) ctd[i.container]=(ctd[i.container]||0)+1; });
+    const ctx = (id) => document.getElementById(id).getContext('2d');
+    roomChartInstance = new Chart(ctx('roomChart'), {type:'pie', data:{labels:Object.keys(rd), datasets:[{data:Object.values(rd), backgroundColor:['#007aff','#34c759','#ff9500','#ff3b30','#af52de']}]}, options:{maintainAspectRatio:false}});
+    categoryChartInstance = new Chart(ctx('categoryChart'), {type:'doughnut', data:{labels:Object.keys(cd), datasets:[{data:Object.values(cd), backgroundColor:['#5ac8fa','#ffcc00','#ff2d55','#5856d6']}]}, options:{maintainAspectRatio:false}});
+    containerChartInstance = new Chart(ctx('containerChart'), {type:'bar', data:{labels:Object.keys(ctd).slice(0,8), datasets:[{label:'数量',data:Object.values(ctd).slice(0,8), backgroundColor:'#007aff'}]}, options:{maintainAspectRatio:false}});
+  }
 });
-
-function renderCharts() {
-  const ctx1 = document.getElementById('roomChart').getContext('2d');
-  const ctx2 = document.getElementById('categoryChart').getContext('2d');
-  const ctx3 = document.getElementById('containerChart').getContext('2d');
-  
-  if(roomChartInstance) roomChartInstance.destroy();
-  if(categoryChartInstance) categoryChartInstance.destroy();
-  if(containerChartInstance) containerChartInstance.destroy();
-
-  const roomData = {}; items.forEach(i => roomData[i.room] = (roomData[i.room]||0)+1);
-  const catData = {}; items.forEach(i => {if(i.category) catData[i.category] = (catData[i.category]||0)+1});
-  const contData = {}; items.forEach(i => {if(i.container) contData[i.container] = (contData[i.container]||0)+1});
-
-  roomChartInstance = new Chart(ctx1, { type: 'pie', data: { labels: Object.keys(roomData), datasets: [{ data: Object.values(roomData), backgroundColor: ['#007aff','#34c759','#ff9500','#ff3b30','#af52de'] }] }, options: { maintainAspectRatio:false } });
-  categoryChartInstance = new Chart(ctx2, { type: 'doughnut', data: { labels: Object.keys(catData), datasets: [{ data: Object.values(catData), backgroundColor: ['#5ac8fa','#ffcc00','#ff2d55','#5856d6'] }] }, options: { maintainAspectRatio:false } });
-  containerChartInstance = new Chart(ctx3, { type: 'bar', data: { labels: Object.keys(contData).slice(0,8), datasets: [{ label: '数量', data: Object.values(contData).slice(0,8), backgroundColor: '#007aff' }] }, options: { maintainAspectRatio:false } });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  loadData();
-  document.getElementById('photoUploadArea').addEventListener('click', () => {
-    document.getElementById('itemImage').click();
-  });
-});
+document.addEventListener('DOMContentLoaded', loadData);
 </script>
 </body>
 </html>
