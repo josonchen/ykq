@@ -1,41 +1,31 @@
-const CACHE_NAME = 'home-items-v5-offline';
+const CACHE_NAME = 'home-items-v6-ocr-idb';
 const urlsToCache = [
-  './', // 缓存当前目录
+  './',
   './index.html',
   './manifest.json',
-  // 关键：必须缓存外部依赖库，否则断网无法使用图表和扫码
   'https://cdn.jsdelivr.net/npm/chart.js',
-  'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js'
+  // 新增：Tesseract 核心库
+  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+  // 注意：Tesseract 在运行时会动态请求 worker.min.js 和 中文语言包
+  // 如果要完全离线 OCR，需要用户在联网时使用过一次 OCR 功能，
+  // 浏览器会自动将这些动态请求缓存到默认的 Cache Storage 中。
 ];
 
-// 1. 安装 SW 并缓存所有资源
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+      .then((cache) => cache.addAll(urlsToCache))
   );
-  self.skipWaiting(); // 强制立即生效
+  self.skipWaiting();
 });
 
-// 2. 拦截网络请求：优先使用本地缓存，没有才去联网
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
-      .then((response) => {
-        // 如果缓存中有，直接返回缓存（离线模式）
-        if (response) {
-          return response;
-        }
-        // 如果缓存没有，去网络请求
-        return fetch(event.request);
-      })
+      .then((response) => response || fetch(event.request))
   );
 });
 
-// 3. 清理旧缓存
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
